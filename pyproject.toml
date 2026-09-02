@@ -26,6 +26,7 @@ classifiers = [
 dependencies = [
     "numpy>=1.20.0",
     "ameva-vulkan-runtime>=1.0.0",
+    "ameva-component-sdk>=0.1.0",
 ]
 
 [project.optional-dependencies]
@@ -35,6 +36,9 @@ dev = ["pytest>=7.0", "paramiko>=3.0"]
 
 [project.scripts]
 termux-tts = "termux_tts.cli:main"
+
+[project.metadata]
+protocol = ["ameva-component-sdk"]
 
 [tool.setuptools.packages.find]
 where = ["."]
