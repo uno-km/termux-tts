@@ -4,7 +4,7 @@ Includes Number-to-Speech Normalizer and Inline Expressive Tag Parser.
 """
 
 import re
-from typing import List, Dict, Tuple
+from typing import List, Dict
 from .exceptions import TTSLanguageNotSupportedError
 from .g2p_korean import korean_text_to_phonemes
 

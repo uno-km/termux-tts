@@ -9,10 +9,10 @@ import math
 import platform
 import numpy as np
 from dataclasses import dataclass
-from typing import Optional, List, Dict, Any
+from typing import Optional
 
 from .exceptions import TTSInferenceError, VulkanInitializationError
-from .tokenizer import PhoneticTokenizer, EXPRESSIVE_TAGS
+from .tokenizer import PhoneticTokenizer
 from .audio import AudioBuffer
 from .vulkan_probe import VulkanDoctor
 

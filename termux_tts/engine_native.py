@@ -12,7 +12,6 @@ from dataclasses import dataclass
 from typing import Optional
 
 from .exceptions import TTSInferenceError
-from .audio import AudioBuffer
 
 @dataclass
 class NativeResult:

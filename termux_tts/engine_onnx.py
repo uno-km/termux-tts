@@ -8,13 +8,13 @@ import time
 import platform
 import numpy as np
 from dataclasses import dataclass
-from typing import Optional, List, Dict, Any
+from typing import Optional
 
 from .exceptions import TTSModelLoadError, TTSInferenceError, VulkanInitializationError
 from .tokenizer import PhoneticTokenizer
 from .audio import AudioBuffer
 from .vulkan_probe import VulkanDoctor
-from .engine_dsp import apply_biquad_resonator, QUALITY_PRESETS, _detect_cpu_backend
+from .engine_dsp import _detect_cpu_backend
 
 @dataclass
 class ONNXResult:

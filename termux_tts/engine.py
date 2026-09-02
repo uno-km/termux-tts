@@ -8,7 +8,7 @@ Unified 3-Tier Multi-Backend TTS Gateway for termux-tts:
 import os
 from typing import Optional, Union, Dict, Any
 
-from .exceptions import TTSInferenceError, TTSModelLoadError, VulkanInitializationError
+from .exceptions import TTSInferenceError
 from .engine_native import NativeAndroidEngine, NativeResult
 from .engine_dsp import ParametricDSPEngine, DSPResult, QUALITY_PRESETS
 from .engine_onnx import ONNXNeuralEngine, ONNXResult

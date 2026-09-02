@@ -4,7 +4,7 @@ Delegates 100% to official 'ameva-vulkan-runtime' SDK (Doctor / TtsAdapter / Vul
 """
 
 import logging
-from typing import Dict, Any, Optional
+from typing import Dict, Any
 
 logger = logging.getLogger("termux_tts.vulkan_probe")
 

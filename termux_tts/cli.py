@@ -5,7 +5,6 @@ Command-Line Interface for termux-tts:
 - termux-tts doctor: 12-Stage Vulkan GPU Hardware Diagnostics
 """
 
-import sys
 import argparse
 from .engine import load, doctor
 

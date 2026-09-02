@@ -5,7 +5,6 @@ Handles 16-bit Linear PCM formatting with soft-clipping protection.
 
 import io
 import wave
-import struct
 import numpy as np
 from typing import Union
 from .exceptions import TTSAudioEncodingError
