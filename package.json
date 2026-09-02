@@ -1,0 +1,31 @@
+{
+  "name": "termux-tts",
+  "version": "0.1.0",
+  "description": "High-Performance Multi-Backend Text-to-Speech Framework (DSP Formant Vocoder, ONNX Neural Runtime & Android Native Voice)",
+  "main": "index.js",
+  "bin": {
+    "termux-tts": "./bin/cli.js"
+  },
+  "scripts": {
+    "test": "node binding_node/test_node.js",
+    "doctor": "node bin/cli.js doctor"
+  },
+  "keywords": [
+    "tts",
+    "text-to-speech",
+    "vulkan",
+    "vits",
+    "termux",
+    "android",
+    "onnx",
+    "speech-synthesis"
+  ],
+  "author": "AMEVA Foundation",
+  "license": "Apache-2.0",
+  "dependencies": {
+    "ameva-vulkan-runtime": ">=1.0.0"
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  }
+}
