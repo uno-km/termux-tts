@@ -35,6 +35,16 @@ def main():
     # 3. Doctor (Diagnostics)
     subparsers.add_parser("doctor", help="Run 12-stage Vulkan GPU hardware diagnostics")
 
+    # ── AMEVA Component Protocol v1 ─────────────────────────────────────────
+    _protocol_available = False
+    try:
+        from ameva_component.cli_support import build_protocol_subcommands
+        build_protocol_subcommands(subparsers)
+        _protocol_available = True
+    except ImportError:
+        pass
+    # ────────────────────────────────────────────────────────────────────────
+
     args = parser.parse_args()
 
     if args.command == "synth":
@@ -56,8 +66,17 @@ def main():
         for k, v in diag.items():
             print(f"  - {k:30s}: {v}")
         print("=" * 60)
+
+    elif args.command in ("component", "model", "instance") and _protocol_available:
+        from ameva_component.cli_support import dispatch_protocol
+        from termux_tts.control import TTSControl
+        dispatch_protocol(args, TTSControl())
+    elif args.command in ("component", "model", "instance"):
+        print("[ERROR] ameva-component-sdk not installed.", file=sys.stderr)
+        sys.exit(1)
     else:
         parser.print_help()
 
 if __name__ == "__main__":
     main()
+
