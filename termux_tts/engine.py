@@ -12,7 +12,6 @@ from .exceptions import TTSInferenceError
 from .engine_native import NativeAndroidEngine, NativeResult
 from .engine_dsp import ParametricDSPEngine, DSPResult, QUALITY_PRESETS
 from .engine_onnx import ONNXNeuralEngine, ONNXResult
-from .vulkan_probe import VulkanDoctor
 
 class TTSEngine:
     """Production Multi-Backend Gateway supporting DSP, ONNX, and Native speech engines."""
@@ -134,5 +133,25 @@ def load(
     )
 
 def doctor() -> Dict[str, Any]:
-    return VulkanDoctor().probe_all()
+    try:
+        import ameva_vulkan_runtime as avr
+        from ameva_vulkan_runtime.adapters import TtsAdapter
+        doc = avr.Doctor()
+        rep = doc.run_self_test(verbose=False)
+        return {
+            "doctor_report": rep,
+            "overall_success": getattr(rep, "overall_success", False),
+            "passed_stages": getattr(rep, "passed_stages", 0),
+            "recommended_backend": getattr(rep, "recommended_backend", "cpu"),
+            "status": "DIAGNOSED_VIA_AMEVA"
+        }
+    except Exception as e:
+        return {
+            "doctor_report": None,
+            "overall_success": False,
+            "passed_stages": 0,
+            "recommended_backend": "cpu_neon",
+            "error": str(e),
+            "status": "FALLBACK_CPU"
+        }
 
