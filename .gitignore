@@ -7,3 +7,17 @@ build/
 .env.*
 *ssh*.py
 ssh_real_device_test.py
+
+# ==============================================================================
+# Security & Credentials Isolation Policy
+# ==============================================================================
+.env*
+!.env.example
+*.pem
+*.key
+*.crt
+id_rsa*
+.pypirc
+.npmrc
+secrets.json
+scratch/
