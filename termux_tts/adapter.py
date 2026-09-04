@@ -11,7 +11,12 @@ from __future__ import annotations
 from typing import Any, AsyncIterator
 
 from ameva_component.adapter_base import BaseOrchestratorAdapter
-from ameva_component.exceptions import ComponentError, OperationNotSupported
+from ameva_component.exceptions import (
+    ComponentError,
+    OperationNotSupported,
+    redact_details,
+    redact_text,
+)
 from termux_tts.control.component import TTSControl
 
 
@@ -112,11 +117,25 @@ class TTSOrchestratorAdapter(BaseOrchestratorAdapter):
             }
 
         except ComponentError as component_err:
-            err_dict = component_err.to_dict() if hasattr(component_err, "to_dict") else {
-                "code": getattr(component_err, "code", "COMPONENT_ERROR"),
-                "message": str(component_err),
-                "retryable": getattr(component_err, "retryable", False),
-            }
+            # HIGH 1: ComponentError public_message와 redact_details로 외부 노출 보안 격리
+            import logging
+            logging.getLogger(__name__).exception(
+                "TTS component operation failed",
+                extra={
+                    "component_id": self.COMPONENT_ID,
+                    "operation": "infer",
+                    "code": getattr(component_err, "code", "COMPONENT_ERROR"),
+                },
+            )
+            if hasattr(component_err, "to_public_dict"):
+                err_dict = component_err.to_public_dict()
+            else:
+                err_dict = {
+                    "code": getattr(component_err, "code", "COMPONENT_ERROR"),
+                    "message": redact_text(getattr(component_err, "public_message", "Component operation failed")),
+                    "retryable": getattr(component_err, "retryable", False),
+                    "details": redact_details(getattr(component_err, "details", {})),
+                }
             yield {
                 "type": "error",
                 "ok": False,
@@ -131,15 +150,22 @@ class TTSOrchestratorAdapter(BaseOrchestratorAdapter):
             }
 
         except (ValueError, TypeError) as contract_err:
+            # P0-3/4 & HIGH 1: 계약 위반 (str(contract_err) 직접 노출 금지, 내부 로그 격리)
+            import logging
+            logging.getLogger(__name__).exception("TTS contract validation error during infer: %s", contract_err)
             yield {
                 "type": "error",
                 "ok": False,
                 "error": {
                     "code": "ADAPTER_CONTRACT_ERROR",
-                    "message": str(contract_err),
+                    "message": "Adapter contract validation failed",
                     "operation": "infer",
                     "component_id": self.COMPONENT_ID,
                     "retryable": False,
+                    "details": {
+                        "cause_type": type(contract_err).__name__,
+                        "operation": "infer",
+                    },
                 },
             }
 
