@@ -327,3 +327,6 @@ class ParametricDSPEngine:
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.close()
 
+# Backward compatibility alias for legacy scripts
+DSPSynthesizer = ParametricDSPEngine
+

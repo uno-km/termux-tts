@@ -3,7 +3,7 @@ from setuptools import setup, find_packages
 
 setup(
     name="termux-tts",
-    version="0.1.0",
+    version="1.1.3",
     description="Ultra-Fast On-Device Dual-Engine Text-to-Speech Framework (Parametric Formant Acoustic Synthesizer & Android Native Voice Bridge)",
     long_description=open("README.pypi.md", encoding="utf-8").read() if os.path.exists("README.pypi.md") else open("README.md", encoding="utf-8").read(),
     long_description_content_type="text/markdown",

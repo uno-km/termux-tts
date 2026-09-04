@@ -6,7 +6,7 @@ termux-tts: Production-Grade Dual-Engine TTS Framework for Android Termux.
 
 from .engine import TTSEngine, load, doctor
 from .engine_native import NativeAndroidEngine, NativeResult
-from .engine_dsp import ParametricDSPEngine, DSPResult, QUALITY_PRESETS
+from .engine_dsp import ParametricDSPEngine, DSPResult, QUALITY_PRESETS, DSPSynthesizer
 from .engine_onnx import ONNXNeuralEngine, ONNXResult
 from .tokenizer import PhoneticTokenizer, EXPRESSIVE_TAGS
 from .g2p_korean import KoreanG2PEngine, korean_text_to_phonemes
@@ -26,6 +26,7 @@ __all__ = [
     "load",
     "doctor",
     "ParametricDSPEngine",
+    "DSPSynthesizer",
     "DSPResult",
     "NativeAndroidEngine",
     "NativeResult",
