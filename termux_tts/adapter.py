@@ -79,17 +79,19 @@ class TTSOrchestratorAdapter(BaseOrchestratorAdapter):
             if not isinstance(result, dict):
                 raise ValueError(f"synthesize() must return dict, got {type(result).__name__}")
 
-            if result.get("ok") is False:
+            if result.get("ok") is not True:
+                err_payload = result.get("error") if isinstance(result.get("error"), dict) else {}
                 yield {
                     "type": "error",
                     "ok": False,
-                    "error": result.get("error", {
-                        "code": "SYNTHESIS_FAILED",
-                        "message": "synthesize() returned ok=false",
+                    "error": {
+                        "code": err_payload.get("code", "ADAPTER_RESULT_NOT_SUCCESS"),
+                        "message": err_payload.get("message", "synthesize() did not return ok=True"),
                         "operation": "infer",
                         "component_id": self.COMPONENT_ID,
                         "retryable": False,
-                    }),
+                        "details": {"result_keys": sorted(result.keys())},
+                    },
                 }
                 return
 
@@ -142,17 +144,22 @@ class TTSOrchestratorAdapter(BaseOrchestratorAdapter):
             }
 
         except Exception as unexpected_err:
+            import logging
+            logging.getLogger(__name__).exception("TTS adapter unexpected error during infer: %s", unexpected_err)
             code = getattr(unexpected_err, "code", "ADAPTER_INTERNAL_ERROR")
             yield {
                 "type": "error",
                 "ok": False,
                 "error": {
-                    "code": code,
-                    "message": str(unexpected_err),
-                    "cause": type(unexpected_err).__name__,
+                    "code": code if isinstance(code, str) else "ADAPTER_INTERNAL_ERROR",
+                    "message": "Unexpected adapter failure",
                     "operation": "infer",
                     "component_id": self.COMPONENT_ID,
-                    "retryable": self._classify_retryable(code, default=False),
+                    "retryable": False,
+                    "details": {
+                        "cause_type": type(unexpected_err).__name__,
+                        "operation": "infer",
+                    },
                 },
             }
 

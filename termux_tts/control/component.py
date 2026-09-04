@@ -68,7 +68,9 @@ class TTSControl(ComponentControl):
         ts = now_timestamps()
         state_data = self._state_file.read()
         stale = self._state_file.is_stale(threshold_ms=30_000)
-        pid, pid_alive = self._check_pid()
+        pid_info = self._check_pid()
+        pid = pid_info.get("pid")
+        pid_alive = pid_info.get("alive")
         instances = self._inst_reg.list_all()
         hot = [i for i in instances if i.state == InstanceState.HOT]
 
@@ -78,11 +80,22 @@ class TTSControl(ComponentControl):
         try:
             from termux_tts.engine_onnx import ONNXNeuralEngine
             onnx_available = True
-        except ImportError:
-            pass
+        except ImportError as _imp_err:
+            import logging
+            logging.getLogger(__name__).debug("[tts] ONNXNeuralEngine not importable: %s", _imp_err)
 
         ready = dsp_available  # DSP는 Zero Dependency이므로 항상 최소 가용
-        degraded = stale or not pid_alive
+        degraded = stale or (pid_alive is not True)
+
+        proc_dict: dict[str, Any] = {
+            "running": pid_alive,
+            "pid": pid,
+            "verified": pid_info.get("verified", False),
+        }
+        if "inspection_error" in pid_info:
+            proc_dict["inspection_error"] = pid_info["inspection_error"]
+        if "reason" in pid_info:
+            proc_dict["reason"] = pid_info["reason"]
 
         return {
             "protocol":       "ameva-component-status/1",
@@ -92,7 +105,7 @@ class TTSControl(ComponentControl):
             "ready":          ready,
             "degraded":       degraded,
             **ts,
-            "process":        {"running": pid_alive, "pid": pid},
+            "process":        proc_dict,
             "capabilities":   list(self.CAPABILITIES),
             "active_models":  [i.model_id for i in hot],
             "backends": {
@@ -108,23 +121,104 @@ class TTSControl(ComponentControl):
             },
         }
 
-    def _check_pid(self) -> tuple[int | None, bool]:
-        """P0-5: PID 파일 기반 프로세스 활성 여부. 'pid 없음'과 '검사 실패' 구분."""
+    def _check_pid(self) -> dict[str, Any]:
+        """BLOCKER 1: PID 파일 기반 프로세스 활성 여부 확인.
+        PermissionError/OSError 발생 시 alive=None, verified=False, inspection_error 반환."""
         import logging
         _log = logging.getLogger(__name__)
 
         if self.DEFAULT_PID_FILE.exists():
             try:
-                pid = int(self.DEFAULT_PID_FILE.read_text().strip())
+                raw = self.DEFAULT_PID_FILE.read_text().strip()
+                pid = int(raw)
+            except (ValueError, OSError) as parse_err:
+                _log.warning("[tts] PID file parse/read error: %s", parse_err)
+                return {
+                    "pid": None,
+                    "alive": None,
+                    "verified": False,
+                    "inspection_error": {
+                        "code": "PID_PARSE_ERROR",
+                        "message": str(parse_err),
+                    },
+                }
+
+            try:
                 os.kill(pid, 0)
-                return pid, True
+                return {"pid": pid, "alive": True, "verified": True}
             except ProcessLookupError:
-                pass  # 프로세스 없음 — 정상 종료 후 잔여 PID 파일
+                return {
+                    "pid": pid,
+                    "alive": False,
+                    "verified": True,
+                    "reason": "process_lookup_failed",
+                }
             except PermissionError as perm_err:
                 _log.warning("[tts] PID alive check PermissionError: %s", perm_err)
-            except (ValueError, OSError) as parse_err:
-                _log.warning("[tts] PID file parse/check error: %s", parse_err)
-        return None, False
+                return {
+                    "pid": pid,
+                    "alive": None,
+                    "verified": False,
+                    "inspection_error": {
+                        "code": "PROCESS_INSPECTION_PERMISSION_DENIED",
+                        "message": str(perm_err),
+                    },
+                }
+            except OSError as os_err:
+                _log.warning("[tts] PID alive check OSError: %s", os_err)
+                return {
+                    "pid": pid,
+                    "alive": None,
+                    "verified": False,
+                    "inspection_error": {
+                        "code": "PROCESS_INSPECTION_OS_ERROR",
+                        "message": str(os_err),
+                    },
+                }
+
+        state_data = self._state_file.read()
+        if state_data:
+            pid = state_data.get("process", {}).get("pid")
+            if pid:
+                try:
+                    os.kill(pid, 0)
+                    return {"pid": pid, "alive": True, "verified": True}
+                except ProcessLookupError:
+                    return {
+                        "pid": pid,
+                        "alive": False,
+                        "verified": True,
+                        "reason": "process_lookup_failed",
+                    }
+                except PermissionError as perm_err:
+                    _log.warning("[tts] State-file PID %d PermissionError: %s", pid, perm_err)
+                    return {
+                        "pid": pid,
+                        "alive": None,
+                        "verified": False,
+                        "inspection_error": {
+                            "code": "PROCESS_INSPECTION_PERMISSION_DENIED",
+                            "message": str(perm_err),
+                        },
+                    }
+                except OSError as os_err:
+                    _log.warning("[tts] State-file PID %d OSError: %s", pid, os_err)
+                    return {
+                        "pid": pid,
+                        "alive": None,
+                        "verified": False,
+                        "inspection_error": {
+                            "code": "PROCESS_INSPECTION_OS_ERROR",
+                            "message": str(os_err),
+                        },
+                    }
+
+        return {
+            "pid": None,
+            "alive": False,
+            "verified": True,
+            "reason": "pid_file_missing",
+        }
 
     def doctor_full(self) -> dict:
         """기존 TTSEngine doctor() 호출 — 12단계 Vulkan Doctor 포함."""
