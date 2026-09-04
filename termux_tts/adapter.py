@@ -2,12 +2,16 @@
 termux_tts.adapter
 ===================
 AMEVA Component Protocol v1 — Orchestrator Adapter (v0.8.1 호환)
+
+P0-2: infer() fallback yield _not_supported → raise OperationNotSupported
+P0-4: except Exception → retryable 분류, 원본 오류 코드 보존
 """
 from __future__ import annotations
 
 from typing import Any, AsyncIterator
 
 from ameva_component.adapter_base import BaseOrchestratorAdapter
+from ameva_component.exceptions import ComponentError, OperationNotSupported
 from termux_tts.control.component import TTSControl
 
 
@@ -15,11 +19,24 @@ class TTSOrchestratorAdapter(BaseOrchestratorAdapter):
     """TTS (Text-to-Speech) Orchestrator Adapter.
 
     합성은 파일 기반으로 수행됩니다.
-    infer()는 text를 받아 audio 파일 경로를 반환합니다.
+    infer(): text를 받아 audio 파일 경로를 반환합니다.
     요청 모델과 실행 모델이 다르면 fallback_used=True를 명시합니다.
     """
 
     COMPONENT_ID = "termux-tts"
+
+    _RETRYABLE_CODES: frozenset[str] = frozenset({
+        "REMOTE_TIMEOUT",
+        "MODEL_BUSY",
+        "TEMPORARY_RESOURCE_UNAVAILABLE",
+    })
+    _NON_RETRYABLE_CODES: frozenset[str] = frozenset({
+        "VOICE_NOT_FOUND",
+        "TEXT_TOO_LONG",
+        "UNSUPPORTED_LANGUAGE",
+        "OUTPUT_PATH_FORBIDDEN",
+        "ENCODING_FAILED",
+    })
 
     def __init__(self, control: TTSControl | None = None) -> None:
         self._control = control or TTSControl()
@@ -28,14 +45,14 @@ class TTSOrchestratorAdapter(BaseOrchestratorAdapter):
         """TTS synthesis: text → audio file path.
 
         request 키:
-            text (str): 합성할 텍스트 (필수)
+            text (str): 합성할 텍스트 (필수, 비어있으면 안 됨)
             voice_id (str): 목소리 ID (선택)
             model_id (str): 모델 ID (선택)
-            output_path (str): 출력 파일 경로 (선택, 없으면 임시 파일)
+            output_path (str): 출력 파일 경로 (선택)
 
         반환 프레임:
             {"type": "audio", "audio_path": str, "final": bool, "fallback_used": bool}
-            {"type": "error", "code": str, "message": str}
+            {"type": "error", "ok": False, "error": {...}}
         """
         text = request.get("text", "").strip()
         if not text:
@@ -52,46 +69,99 @@ class TTSOrchestratorAdapter(BaseOrchestratorAdapter):
             }
             return
 
-        if hasattr(self._control, "synthesize"):
-            try:
-                result = await self._control.synthesize(request)
-                audio_path = result.get("audio_path", "")
-                if not audio_path:
-                    yield {
-                        "type": "error",
-                        "ok": False,
-                        "error": {
-                            "code": "SYNTHESIS_FAILED",
-                            "message": "synthesize() returned no audio_path",
-                            "operation": "infer",
-                            "component_id": self.COMPONENT_ID,
-                            "retryable": True,
-                        },
-                    }
-                    return
-                yield {
-                    "type": "audio",
-                    "audio_path": audio_path,
-                    "final": True,
-                    "fallback_used": result.get("fallback_used", False),
-                    "requested_voice": result.get("requested_voice"),
-                    "executed_voice": result.get("executed_voice"),
-                    "ok": True,
-                }
-            except Exception as exc:
+        if not hasattr(self._control, "synthesize"):
+            # P0-2: fallback yield → raise
+            raise OperationNotSupported(operation="infer.synthesize", component_id=self.COMPONENT_ID)
+
+        try:
+            result = await self._control.synthesize(request)
+
+            if not isinstance(result, dict):
+                raise ValueError(f"synthesize() must return dict, got {type(result).__name__}")
+
+            if result.get("ok") is False:
                 yield {
                     "type": "error",
                     "ok": False,
-                    "error": {
+                    "error": result.get("error", {
                         "code": "SYNTHESIS_FAILED",
-                        "message": str(exc),
+                        "message": "synthesize() returned ok=false",
                         "operation": "infer",
                         "component_id": self.COMPONENT_ID,
-                        "retryable": True,
-                    },
+                        "retryable": False,
+                    }),
                 }
-        else:
-            yield self._not_supported("infer.synthesize")
+                return
+
+            audio_path = result.get("audio_path")
+            if not audio_path:
+                raise ValueError("synthesize() result missing required field 'audio_path'")
+            if not isinstance(audio_path, str):
+                raise TypeError(f"synthesize() audio_path must be str, got {type(audio_path).__name__}")
+
+            yield {
+                "type": "audio",
+                "audio_path": audio_path,
+                "final": True,
+                "fallback_used": result.get("fallback_used", False),
+                "requested_voice": result.get("requested_voice"),
+                "executed_voice": result.get("executed_voice"),
+                "ok": True,
+            }
+
+        except ComponentError as component_err:
+            err_dict = component_err.to_dict() if hasattr(component_err, "to_dict") else {
+                "code": getattr(component_err, "code", "COMPONENT_ERROR"),
+                "message": str(component_err),
+                "retryable": getattr(component_err, "retryable", False),
+            }
+            yield {
+                "type": "error",
+                "ok": False,
+                "error": {
+                    **err_dict,
+                    "operation": "infer",
+                    "component_id": self.COMPONENT_ID,
+                    "retryable": self._classify_retryable(
+                        err_dict.get("code", ""), default=err_dict.get("retryable", False)
+                    ),
+                },
+            }
+
+        except (ValueError, TypeError) as contract_err:
+            yield {
+                "type": "error",
+                "ok": False,
+                "error": {
+                    "code": "ADAPTER_CONTRACT_ERROR",
+                    "message": str(contract_err),
+                    "operation": "infer",
+                    "component_id": self.COMPONENT_ID,
+                    "retryable": False,
+                },
+            }
+
+        except Exception as unexpected_err:
+            code = getattr(unexpected_err, "code", "ADAPTER_INTERNAL_ERROR")
+            yield {
+                "type": "error",
+                "ok": False,
+                "error": {
+                    "code": code,
+                    "message": str(unexpected_err),
+                    "cause": type(unexpected_err).__name__,
+                    "operation": "infer",
+                    "component_id": self.COMPONENT_ID,
+                    "retryable": self._classify_retryable(code, default=False),
+                },
+            }
+
+    def _classify_retryable(self, code: str, *, default: bool = False) -> bool:
+        if code in self._RETRYABLE_CODES:
+            return True
+        if code in self._NON_RETRYABLE_CODES:
+            return False
+        return default
 
 
 def create_adapter() -> TTSOrchestratorAdapter:

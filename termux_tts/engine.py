@@ -65,8 +65,12 @@ class TTSEngine:
                         device=self.requested_device,
                         sample_rate=self.sample_rate or 22050
                     )
-                except Exception:
-                    pass
+                except (ImportError, RuntimeError, OSError) as _onnx_err:
+                    import logging
+                    logging.getLogger(__name__).info(
+                        "tts: ONNXNeuralEngine load failed (%s: %s); falling back to ParametricDSPEngine.",
+                        type(_onnx_err).__name__, _onnx_err,
+                    )
             return ParametricDSPEngine(
                 model_path=self.model_path,
                 language=self.language,

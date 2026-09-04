@@ -109,13 +109,21 @@ class TTSControl(ComponentControl):
         }
 
     def _check_pid(self) -> tuple[int | None, bool]:
+        """P0-5: PID 파일 기반 프로세스 활성 여부. 'pid 없음'과 '검사 실패' 구분."""
+        import logging
+        _log = logging.getLogger(__name__)
+
         if self.DEFAULT_PID_FILE.exists():
             try:
                 pid = int(self.DEFAULT_PID_FILE.read_text().strip())
                 os.kill(pid, 0)
                 return pid, True
-            except Exception:
-                pass
+            except ProcessLookupError:
+                pass  # 프로세스 없음 — 정상 종료 후 잔여 PID 파일
+            except PermissionError as perm_err:
+                _log.warning("[tts] PID alive check PermissionError: %s", perm_err)
+            except (ValueError, OSError) as parse_err:
+                _log.warning("[tts] PID file parse/check error: %s", parse_err)
         return None, False
 
     def doctor_full(self) -> dict:
