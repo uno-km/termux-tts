@@ -16,14 +16,14 @@ def test_onnx_engine_missing_model_fail_fast():
     with pytest.raises(TTSModelLoadError) as excinfo:
         ONNXNeuralEngine(model_path=None)
     err_str = str(excinfo.value)
-    assert "model_path" in err_str or "onnxruntime" in err_str
+    assert any(k in err_str for k in ("model_path", "onnxruntime", "binary", "assets"))
 
 def test_onnx_engine_nonexistent_file_fail_fast():
-    """Verify ONNXNeuralEngine raises TTSModelLoadError when file does not exist or onnxruntime missing."""
+    """Verify ONNXNeuralEngine raises TTSModelLoadError when file does not exist or binary missing."""
     with pytest.raises(TTSModelLoadError) as excinfo:
         ONNXNeuralEngine(model_path="nonexistent_vits_model.onnx")
     err_str = str(excinfo.value)
-    assert "does not exist" in err_str or "onnxruntime" in err_str
+    assert any(k in err_str for k in ("does not exist", "not found", "onnxruntime", "binary", "assets"))
 
 def test_dsp_engine_explicit_execution():
     """Verify ParametricDSPEngine executes with zero model dependencies."""

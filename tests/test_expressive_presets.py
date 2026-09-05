@@ -27,3 +27,32 @@ def test_expressive_breath_and_laugh_tokens():
         assert res.duration_sec > 1.0
         assert res.sample_rate == 24000
         print(f"\n[PASS EXPRESSIVE SYNTHESIS] Synthesized in {res.elapsed_ms:.1f}ms | Duration={res.duration_sec:.2f}s")
+
+def test_tier4_expressive_engine_tags():
+    from termux_tts.engine_expressive import ExpressiveEngine
+    # Mock base engine for pure unit testing without binary dependency
+    class MockSherpa:
+        model_name = "mock-vits"
+        sample_rate = 22050
+        def synthesize(self, text, speed=1.0):
+            from termux_tts.audio import AudioBuffer
+            from termux_tts.engine_sherpa import SherpaResult
+            dur = max(0.5, len(text) * 0.08)
+            samples = np.zeros(int(22050 * dur), dtype=np.float32)
+            buf = AudioBuffer(samples, sample_rate=22050)
+            return SherpaResult(
+                text=text, audio_buffer=buf, sample_rate=22050,
+                duration_sec=dur, elapsed_ms=10.0, rtf=0.02,
+                model_name="mock-vits", backend="MOCK", device_model="mock"
+            )
+        def close(self):
+            pass
+
+    exp_engine = ExpressiveEngine(base_engine=MockSherpa(), sample_rate=22050)
+    res = exp_engine.synthesize("안녕하세요 [sigh] 휴우 [laugh] 하하")
+    assert "[sigh]" in res.expressive_tags_detected
+    assert "[laugh]" in res.expressive_tags_detected
+    assert res.duration_sec > 1.0
+    assert res.backend == "EXPRESSIVE_NEURAL_ON_DEVICE"
+    assert len(res.wav_bytes) > 2000
+    print(f"\n[PASS TIER 4 EXPRESSIVE] Tags={res.expressive_tags_detected} | Duration={res.duration_sec:.2f}s")

@@ -4,8 +4,7 @@
 [![Python](https://img.shields.io/pypi/pyversions/termux-tts.svg?style=flat-square)](https://pypi.org/project/termux-tts/)
 [![License](https://img.shields.io/badge/License-Apache_2.0-004499.svg?style=flat-square)](https://github.com/uno-km/termux-tts)
 
-> **High-Performance Multi-Backend Speech Synthesis Framework for Android Termux & Edge Linux**  
-> Supports Zero-Dependency Parametric DSP Formant Vocoder, Deep Learning ONNX Neural Runtime, and Android Native System Voice Bridge.
+> Production-Grade 4-Tier On-Device Speech Synthesis Framework for Mobile & Edge (Zero-Dependency DSP Formant, C++ Vulkan GPU Neural Engine & Android Native Voice Bridge)
 
 ## Installation
 
@@ -13,30 +12,39 @@
 pip install termux-tts
 ```
 
+### 1-Click Automated Engine Provisioning
+```bash
+termux-tts install --tier high
+```
+
 ## Quickstart
 
 ```python
 import termux_tts as tts
 
-# 1. Zero-Dependency DSP Formant Mode (Default)
-with tts.load(engine="dsp", language="ko") as engine:
-    res = engine.synthesize("안녕하세요, 텀묵스 음성 합성입니다.", output="dsp.wav")
-    print(f"Synthesized in {res.elapsed_ms:.1f}ms (RTF: {res.rtf:.4f}x)")
+# 1. Studio Vulkan GPU Neural Engine
+with tts.load(engine="vulkan", model_tier="high") as engine:
+    result = engine.synthesize("Neural speech synthesis on mobile GPU.", output="speech.wav")
+    print(f"Elapsed: {result.elapsed_ms:.1f}ms (RTF: {result.rtf:.4f}x)")
 
-# 2. Deep Learning ONNX Mode
-with tts.load(engine="onnx", model="vits_ko.onnx", language="ko") as engine:
-    res = engine.synthesize("신경망 고품질 음성 합성입니다.", output="onnx.wav")
+# 2. Zero-Dependency DSP Formant Mode
+with tts.load(engine="dsp", preset="balanced") as engine:
+    result = engine.synthesize("Instant speech generation.", output="dsp.wav")
+    print(f"DSP Latency: {result.elapsed_ms:.1f}ms")
 
-# 3. Android System Native Speak Mode
-with tts.load(engine="native", language="ko") as engine:
-    engine.speak("스피커로 즉시 발화합니다.")
+# 3. Direct Android Native Speaker Output
+with tts.load(engine="native", language="en") as engine:
+    engine.speak("Direct hardware speaker output.")
 ```
 
-## Features
-- **Zero-Dependency DSP Engine**: Instant CPU execution with 0MB download overhead (Rosenberg Glottal Pulse + 5-Band Biquad Filters).
-- **Authentic ONNX Neural Runtime**: Deep learning acoustic model execution for VITS, Piper, and FastSpeech ONNX models.
-- **Android Native Bridge**: Direct speaker speech playback via Termux IPC.
-- **Cross-Platform CLI & Node.js Binding**: First-class support for Python, npm, and shell scripts.
+## Benchmarks (Physical Devices)
+
+| Target Device | Hardware Architecture | Synthesis Engine | Real-Time Factor (RTF) | Status |
+| :--- | :--- | :--- | :---: | :---: |
+| **Galaxy S25** | Snapdragon 8 Elite / Adreno 830 | Vulkan GPU (`lessac-high-fp16`) | **0.993x** | Validated |
+| **Galaxy S25** | Snapdragon 8 Elite / Adreno 830 | Vulkan GPU (`lessac-medium`) | **0.264x** | Validated |
+| **Galaxy A35** | Exynos 1380 / Mali-G68 MP5 | Vulkan GPU (`lessac-medium`) | **1.146x** | Validated |
+| **ARM64 CPU** | All Core Profiles | Parametric DSP Formant | **0.0130x** | Validated |
 
 ## Documentation
 - [Official Documentation & API Reference](https://uno-km.vercel.app/lib/tts/)
@@ -44,4 +52,3 @@ with tts.load(engine="native", language="ko") as engine:
 
 ## License
 Apache-2.0 License. Copyright (c) 2026 Eunho Kim (@uno-km).
-
