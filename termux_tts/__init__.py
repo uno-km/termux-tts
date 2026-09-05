@@ -20,7 +20,7 @@ from .exceptions import (
     TTSLanguageNotSupportedError
 )
 
-__version__ = "1.1.2"
+__version__ = "1.1.4"
 __all__ = [
     "TTSEngine",
     "load",

@@ -1,6 +1,6 @@
 {
   "name": "termux-tts",
-  "version": "0.1.1",
+  "version": "1.1.4",
   "description": "On-device Text-to-Speech framework utilizing device resources (DSP Formant Vocoder, ONNX Neural Runtime & Android Native Voice)",
   "main": "index.js",
   "bin": {
