@@ -342,3 +342,56 @@ class TTSControl(ComponentControl):
             "ready": _ready, "degraded": not _ready, **ts,
             "active_models": [i.model_id for i in hot], "last_error": last_error,
         })
+
+    async def synthesize(self, request: dict[str, Any]) -> dict[str, Any]:
+        """AMEVA Component Protocol v1 synthesize method."""
+        text = request.get("text", "").strip()
+        if not text:
+            return {
+                "ok": False,
+                "error": {
+                    "code": "TEXT_EMPTY",
+                    "message": "Input text cannot be empty",
+                }
+            }
+
+        voice_id = request.get("voice_id")
+        model_id = request.get("model_id")
+        output_path = request.get("output_path")
+        engine_type = request.get("engine", "auto")
+        device = request.get("device", "auto")
+
+        try:
+            from termux_tts.engine import TTSEngine
+            model_file = str(self._models_dir / model_id) if model_id else None
+            engine = TTSEngine(
+                model_path=model_file,
+                engine_type=engine_type,
+                device=device,
+            )
+            res = engine.synthesize(text, output=output_path)
+
+            out_file = output_path
+            if not out_file and hasattr(res, "save"):
+                import tempfile
+                with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as f:
+                    out_file = f.name
+                res.save(out_file)
+
+            return {
+                "ok": True,
+                "audio_path": out_file or getattr(res, "output_path", None),
+                "duration_sec": getattr(res, "duration_sec", 0.0),
+                "sample_rate": getattr(res, "sample_rate", 22050),
+                "model_id": getattr(res, "model_name", model_id or "default"),
+                "backend": getattr(res, "backend", "unknown"),
+                "fallback_used": False,
+            }
+        except Exception as e:
+            return {
+                "ok": False,
+                "error": {
+                    "code": "SYNTHESIZE_FAILED",
+                    "message": str(e),
+                }
+            }

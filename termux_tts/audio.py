@@ -46,7 +46,8 @@ class AudioBuffer:
 
     def to_pcm16_bytes(self) -> bytes:
         """Convert float32 [-1.0, 1.0] samples into 16-bit signed integer bytes."""
-        clipped = np.clip(self.samples, -1.0, 1.0)
+        clean = np.nan_to_num(self.samples, nan=0.0, posinf=1.0, neginf=-1.0)
+        clipped = np.clip(clean, -1.0, 1.0)
         pcm16 = (clipped * 32767.0).astype(np.int16)
         return pcm16.tobytes()
 
@@ -63,6 +64,28 @@ class AudioBuffer:
             return buf.getvalue()
         except Exception as e:
             raise TTSAudioEncodingError(f"Failed to encode WAV buffer: {e}") from e
+
+    def pad_silence(self, lead_in_ms: int = 200, lead_out_ms: int = 150) -> "AudioBuffer":
+        """Prepend and append true zero-amplitude silence to prevent Android DAC ramp-up clipping."""
+        lead_in_samples = int(self.sample_rate * (lead_in_ms / 1000.0))
+        lead_out_samples = int(self.sample_rate * (lead_out_ms / 1000.0))
+        zeros_in = np.zeros(lead_in_samples, dtype=np.float32)
+        zeros_out = np.zeros(lead_out_samples, dtype=np.float32)
+        padded = np.concatenate([zeros_in, self.samples, zeros_out])
+        return AudioBuffer(padded, sample_rate=self.sample_rate)
+
+    @classmethod
+    def from_wav_file(cls, filepath: str) -> "AudioBuffer":
+        """Load an AudioBuffer directly from a WAV file on disk."""
+        try:
+            with wave.open(filepath, "rb") as wf:
+                sr = wf.getframerate()
+                frames = wf.readframes(wf.getnframes())
+                pcm16 = np.frombuffer(frames, dtype=np.int16)
+                samples = (pcm16 / 32767.0).astype(np.float32)
+                return cls(samples, sample_rate=sr)
+        except Exception as e:
+            raise TTSAudioEncodingError(f"Failed to read WAV file '{filepath}': {e}") from e
 
     def save(self, filepath: str) -> str:
         """Save the audio buffer to a WAV file on disk."""
