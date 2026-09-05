@@ -42,7 +42,7 @@ flowchart TD
 2. **Option B (안드로이드 시스템 네이티브 음성 브릿지 - `NativeAndroidEngine`)**:
    - 삼성 보이스(Samsung Voice) 및 구글 음성 엔진(Google TTS)과 Termux IPC로 직접 통신하여 zero-download 오버헤드로 즉시 물리 스피커 발화를 수행합니다.
 3. **Vulkan GPU 진단 계층 (`VulkanDoctor`)**:
-   - `ameva-vulkan-runtime`의 12단계 자체 검증 엔진(V0~V11)을 바인딩하여 퀄컴 Adreno/ARM Mali GPU의 파이프라인 가용성을 실시간 판별합니다.
+   - `ameva-runtime`의 12단계 자체 검증 엔진(V0~V11)을 바인딩하여 퀄컴 Adreno/ARM Mali GPU의 파이프라인 가용성을 실시간 판별합니다.
 
 ---
 
@@ -66,7 +66,7 @@ fi
 
 # [2/4] Python SDK 및 CLI 설치 (Editable/Release Build)
 pip install --upgrade pip setuptools wheel
-pip install ameva-vulkan-runtime || true
+pip install ameva-runtime || true
 pip install --no-build-isolation -e .
 
 # [3/4] Node.js SDK 및 글로벌 npm CLI 심볼릭 링크
@@ -81,7 +81,7 @@ termux-tts doctor || true
 ### 2.2 패키지 빌드 메타데이터 (`setup.py` & `package.json`)
 - **Python Packaging (`setup.py`)**:
   - `console_scripts` 엔트리포인트를 통해 시스템 전역에 `termux-tts` CLI 명령어를 등록합니다.
-  - `numpy>=1.20.0` 및 `ameva-vulkan-runtime>=1.0.0`을 표준 종속성으로 선언합니다.
+  - `numpy>=1.20.0` 및 `ameva-runtime>=2.0.0`을 표준 종속성으로 선언합니다.
 - **Node.js Packaging (`package.json`)**:
   - `bin/cli.js`를 전역 실행 바이너리로 연결하고, CommonJS 기반 `index.js` 모듈을 제공합니다.
 
@@ -378,7 +378,7 @@ class NativeAndroidEngine:
 ---
 
 ### 3.6 하드웨어 진단 프로브 (`termux_tts/vulkan_probe.py`)
-공식 `ameva-vulkan-runtime` 패키지를 바인딩하여 12단계 하드웨어 정밀 진단을 구동합니다.
+공식 `ameva-runtime` 패키지를 바인딩하여 12단계 하드웨어 정밀 진단을 구동합니다.
 
 - **V0**: `libvulkan.so` 동적 로더 개방 여부
 - **V1~V3**: GPU 인스턴스 및 물리 디바이스(Adreno/Mali) 질의
