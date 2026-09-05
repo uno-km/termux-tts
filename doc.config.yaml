@@ -14,6 +14,12 @@ license: "Apache-2.0"
 platform: "Android ARM64 / Qualcomm Adreno & ARM Mali Vulkan 1.3 / Linux"
 github_repo_url: "https://github.com/uno-km/termux-tts"
 
+custom_pages:
+  - slug: "vulkan-engineering-paper"
+    title_en: "Vulkan C++ Engineering Paper"
+    title_ko: "Vulkan C++ 네이티브 가속 논문"
+    file: "lib/tts/vulkan-engineering-paper.html"
+
 tagline_en: "Production-Grade 4-Tier On-Device Speech Synthesis Framework (Zero-Dependency DSP Formant, C++ Vulkan GPU Neural Engine & Android Native Voice Bridge)"
 tagline_ko: "모바일 및 엣지 환경을 위한 프로덕션급 4-Tier 온디바이스 음성 합성 프레임워크 (무의존성 DSP 포먼트, C++ Vulkan GPU 신경망 엔진, 안드로이드 네이티브 브릿지)"
 
