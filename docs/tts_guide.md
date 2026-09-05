@@ -31,7 +31,7 @@ flowchart TD
     end
 
     subgraph Hardware_Probe ["하드웨어 진단 계층"]
-        Doctor[VulkanDoctor (vulkan_probe.py)] --> AVR[ameva-vulkan-runtime (12-Stage Probe)]
+        Doctor[VulkanDoctor (vulkan_probe.py)] --> AVR[ameva-runtime (12-Stage Probe)]
     end
 ```
 

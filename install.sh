@@ -26,10 +26,10 @@ fi
 # 2. Python Toolchain & Package Installation (pip)
 echo "[2/4] Installing Python SDK and CLI via pip..."
 pip install --upgrade pip setuptools wheel
-if pip install ameva-vulkan-runtime 2>/dev/null; then
-    echo "  -> ameva-vulkan-runtime hardware diagnostics bound."
+if pip install ameva-runtime 2>/dev/null; then
+    echo "  -> ameva-runtime hardware diagnostics bound."
 else
-    echo "  -> ameva-vulkan-runtime optional hardware acceleration bridge skipped."
+    echo "  -> ameva-runtime optional hardware acceleration bridge skipped."
 fi
 pip install --no-build-isolation -e .
 
