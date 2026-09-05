@@ -1,8 +1,9 @@
-﻿__pycache__/
+__pycache__/
 *.py[cod]
 dist/
 build/
 *.egg-info/
+*.wav
 .env
 .env.*
 *ssh*.py

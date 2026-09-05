@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.1.5] - 2026-09-05
+
+### Changed
+- Synchronized install.sh hardware diagnostics binding to ameva-runtime.
+- Modernized 12-stage hardware diagnostic bridge and documentation architecture diagrams.
+
+---
+
 ## [1.1.4] - 2026-09-05
 
 ### Changed
