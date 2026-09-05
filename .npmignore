@@ -1,0 +1,9 @@
+tests/
+*.wav
+.pytest_cache/
+build/
+dist/
+*.egg-info/
+scratch/
+__pycache__/
+*.pyc
