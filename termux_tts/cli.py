@@ -41,8 +41,8 @@ def main():
         from ameva_component.cli_support import build_protocol_subcommands
         build_protocol_subcommands(subparsers)
         _protocol_available = True
-    except ImportError:
-        pass
+    except ImportError as _proto_err:
+        _protocol_available = False
     # ────────────────────────────────────────────────────────────────────────
 
     args = parser.parse_args()

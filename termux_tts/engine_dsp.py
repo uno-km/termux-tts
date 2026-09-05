@@ -129,8 +129,8 @@ def apply_biquad_resonator(signal: np.ndarray, f_res: float, bandwidth: float, s
     try:
         from scipy.signal import lfilter
         return lfilter([b0, b1, b2], [1.0, a1, a2], signal).astype(np.float32)
-    except ImportError:
-        pass
+    except ImportError as _scipy_err:
+        _ = _scipy_err
 
     # High-performance Direct Form II Transposed Difference Loop
     n = len(signal)

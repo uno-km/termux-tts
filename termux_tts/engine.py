@@ -12,6 +12,7 @@ from .exceptions import TTSInferenceError
 from .engine_native import NativeAndroidEngine, NativeResult
 from .engine_dsp import ParametricDSPEngine, DSPResult, QUALITY_PRESETS
 from .engine_onnx import ONNXNeuralEngine, ONNXResult
+from .vulkan_probe import VulkanDoctor
 
 class TTSEngine:
     """Production Multi-Backend Gateway supporting DSP, ONNX, and Native speech engines."""
@@ -138,8 +139,8 @@ def load(
 
 def doctor() -> Dict[str, Any]:
     try:
-        import ameva_vulkan_runtime as avr
-        from ameva_vulkan_runtime.adapters import TtsAdapter
+        from ameva_runtime import vulkan as avr
+        from ameva_runtime.vulkan.adapters import TtsAdapter
         doc = avr.Doctor()
         rep = doc.run_self_test(verbose=False)
         return {
