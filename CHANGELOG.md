@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.4.0] - 2026-09-07
+
+### Added
+- Direct integration with `TtsAdapter` from `ameva_runtime.adapters` SSOT.
+- Dual-tier VITS Vulkan neural engine routing with strict Fail-Fast error semantics.
+- English localization for all diagnostics, logs, and exception messages.
+
+---
+
 ## [1.1.5] - 2026-09-05
 
 ### Changed
