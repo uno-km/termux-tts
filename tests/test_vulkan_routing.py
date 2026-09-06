@@ -25,18 +25,18 @@ def test_auto_routing_mode():
         print(f"\n[PASS AUTO ROUTING] Resolved Backend: {res.backend}")
 
 def test_explicit_vulkan_fail_fast_when_disabled(monkeypatch):
-    from termux_tts import engine_dsp as dsp_mod
-    from termux_tts import engine_onnx as onnx_mod
-    from termux_tts import engine as eng_mod
+    from ameva_runtime.doctor import DiagnosticReport
+    from ameva_runtime.adapters import TtsAdapter
     
-    class FakeDoctorDisabled:
-        is_vulkan_available = False
-        def probe_all(self):
-            return {"V0_LoaderOpen": "FAIL"}
-
-    monkeypatch.setattr(dsp_mod, "VulkanDoctor", FakeDoctorDisabled)
-    monkeypatch.setattr(onnx_mod, "VulkanDoctor", FakeDoctorDisabled)
-    monkeypatch.setattr(eng_mod, "VulkanDoctor", FakeDoctorDisabled)
+    disabled_report = DiagnosticReport(
+        device_name="None",
+        vendor_id=0,
+        overall_success=False,
+        recommended_backend="cpu_neon",
+        passed_stages=0,
+        total_stages=12,
+    )
+    monkeypatch.setattr(TtsAdapter, "resolve_diagnostic_report", lambda *args, **kwargs: disabled_report)
 
     # 1. Explicit Vulkan MUST RAISE VulkanInitializationError (No silent fallback!)
     with pytest.raises(VulkanInitializationError) as exc_info:

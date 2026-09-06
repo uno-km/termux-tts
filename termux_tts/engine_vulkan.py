@@ -69,17 +69,19 @@ class VulkanNeuralEngine:
         device: str = "vulkan",
         threads: int = 1,
         sample_rate: int = 22050,
+        model_tier: Optional[str] = None,
     ):
         self.language = language.lower()
         self.requested_device = device.lower()
         self.threads = threads
         self.sample_rate = sample_rate
+        self.model_tier = (model_tier or "high").lower()
         self._is_closed = False
 
         # 1. Locate Vulkan binary
         self.binary = self._find_binary()
 
-        # 2. Locate VITS NCNN model directory
+        # 2. Locate VITS NCNN model directory with tier awareness
         self.model_dir = self._resolve_model_dir(model_path)
         self.model_name = Path(self.model_dir).name
         self.backend = "VULKAN_GPU_NCNN_VITS"
@@ -88,15 +90,19 @@ class VulkanNeuralEngine:
         """Locate sherpa-ncnn-offline-tts executable or fail-fast."""
         for candidate in self.CANDIDATE_BINARIES:
             found = shutil.which(candidate) if not os.path.isabs(candidate) else candidate
-            if found and os.path.isfile(found) and os.access(found, os.X_OK):
+            if found and os.path.isfile(found) and (os.access(found, os.X_OK) or os.name == "nt"):
                 return str(found)
         raise VulkanInitializationError(
-            "[FAIL-FAST] 'sherpa-ncnn-offline-tts' Vulkan binary not found. "
-            "Please run 'termux-tts install' to automatically download and provision the Vulkan engine."
+            "[ERROR: AMEVA-TTS-E001] 'sherpa-ncnn-offline-tts' Vulkan binary not found.\n"
+            "Cause: Hardware acceleration runtime or native Vulkan engine is not installed.\n"
+            "Action Required: Run one-click provisioning via:\n"
+            "  $ termux-tts install --tier high\n"
+            "  (Or run without GPU: termux-tts synth -e dsp -t \"...\")\n"
+            "Documentation: https://uno-km.vercel.app/lib/tts/"
         )
 
     def _resolve_model_dir(self, model_path: Optional[str]) -> str:
-        """Locate directory containing config.json and *.ncnn.bin files."""
+        """Locate directory containing config.json and *.ncnn.bin files with tier awareness."""
         search_dirs: List[Path] = []
         if model_path:
             p = Path(model_path).expanduser().resolve()
@@ -104,20 +110,32 @@ class VulkanNeuralEngine:
                 raise TTSModelLoadError(f"[FAIL-FAST] Explicit model path not found: '{model_path}'")
             search_dirs = [p]
         else:
+            preferred_dir_keyword = "amy-medium" if self.model_tier == "medium" else "lessac-high"
+            
+            # Prioritize tier-specific matching directories first
             for s in self.STANDARD_MODEL_DIRS:
                 if s.exists():
-                    search_dirs.append(s)
+                    if preferred_dir_keyword in s.name.lower():
+                        search_dirs.insert(0, s)
+                    else:
+                        search_dirs.append(s)
                     for child in s.glob("ncnn-vits*"):
                         if child.is_dir():
-                            search_dirs.append(child)
+                            if preferred_dir_keyword in child.name.lower():
+                                search_dirs.insert(0, child)
+                            else:
+                                search_dirs.append(child)
 
         for d in search_dirs:
             if (d / "config.json").exists() and (d / "decoder.ncnn.bin").exists():
                 return str(d)
 
         raise TTSModelLoadError(
-            "[FAIL-FAST] No valid VITS NCNN model directory found. "
-            "Please run 'termux-tts install --tier high' to automatically download model assets."
+            f"[ERROR: AMEVA-TTS-E001] No valid VITS NCNN model directory found (tier: '{self.model_tier}').\n"
+            f"Cause: Model weights not found in standard directories.\n"
+            f"Action Required: Run one-click provisioning via:\n"
+            f"  $ termux-tts install --tier {self.model_tier}\n"
+            f"Documentation: https://uno-km.vercel.app/lib/tts/"
         )
 
     def synthesize(
@@ -140,18 +158,30 @@ class VulkanNeuralEngine:
             temp_wav = tmp_file.name
 
         try:
-            cmd = [
-                self.binary,
-                f"--vits-model-dir={self.model_dir}",
-                "--use-vulkan-compute=1",
-                f"--num-threads={self.threads}",
-                f"--output-filename={temp_wav}",
-                clean_text
-            ]
-
-            env = os.environ.copy()
-            env["LD_LIBRARY_PATH"] = f"/system/lib64:{env.get('LD_LIBRARY_PATH', '')}"
-            env["AMEVA_VK_DSP_ACCEL"] = "1"
+            try:
+                from ameva_runtime.adapters.tts import TtsAdapter
+                cmd = TtsAdapter.build_cli_args(
+                    executable=self.binary,
+                    model_dir=self.model_dir,
+                    text=clean_text,
+                    output_filename=temp_wav,
+                    threads=self.threads,
+                    use_vulkan=True,
+                )
+                is_mali = "mali" in str(getattr(self, "gpu_device", "")).lower()
+                env = TtsAdapter.get_execution_env(is_mali=is_mali)
+            except Exception:
+                cmd = [
+                    self.binary,
+                    f"--vits-model-dir={self.model_dir}",
+                    "--use-vulkan-compute=1",
+                    f"--num-threads={self.threads}",
+                    f"--output-filename={temp_wav}",
+                    clean_text
+                ]
+                env = os.environ.copy()
+                env["LD_LIBRARY_PATH"] = f"/system/lib64:{env.get('LD_LIBRARY_PATH', '')}"
+                env["AMEVA_VK_DSP_ACCEL"] = "1"
 
             proc = subprocess.run(
                 cmd,

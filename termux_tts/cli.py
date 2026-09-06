@@ -29,7 +29,11 @@ def main():
     )
     synth_parser.add_argument("-m", "--model", default=None, help="Path to model file or directory")
     synth_parser.add_argument("-p", "--preset", default="balanced", choices=["fast", "balanced", "expressive", "ultra"])
-    synth_parser.add_argument("-d", "--device", default="auto", choices=["auto", "gpu", "vulkan", "cpu"])
+    synth_parser.add_argument("-d", "--device", default="auto", choices=["auto", "gpu", "vulkan", "cpu"], help="Compute target device")
+    synth_parser.add_argument("-b", "--backend", dest="device", choices=["auto", "gpu", "vulkan", "cpu"], help="Alias for --device")
+    synth_parser.add_argument("--gpu", dest="device", action="store_const", const="gpu", help="Enable hardware GPU acceleration")
+    synth_parser.add_argument("--cpu", dest="device", action="store_const", const="cpu", help="Force CPU compute mode")
+    synth_parser.add_argument("--tier", default=None, choices=["high", "medium", "balanced", "fast", "ultra"], help="Target model tier (high=Studio FP16, medium=Balanced)")
     synth_parser.add_argument("-s", "--speed", type=float, default=1.0, help="Speech speed multiplier (0.5 to 2.0)")
     synth_parser.add_argument("--threads", type=int, default=4, help="Compute worker threads (ARM NEON)")
     synth_parser.add_argument("--volume", type=int, default=None, help="Set Android media volume (1 to 15)")
@@ -78,6 +82,7 @@ def main():
             device=args.device,
             threads=args.threads,
             engine=args.engine,
+            tier=getattr(args, "tier", None),
         ) as engine:
             res = engine.synthesize(args.text, output=args.output, speed=args.speed)
             backend_name = getattr(res, "backend", "UNKNOWN")

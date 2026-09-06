@@ -224,9 +224,10 @@ class TTSControl(ComponentControl):
         """기존 TTSEngine doctor() 호출 — 12단계 Vulkan Doctor 포함."""
         lite = self.doctor_lite()
         try:
-            from termux_tts.vulkan_probe import VulkanDoctor
-            vd = VulkanDoctor()
-            lite["vulkan"] = vd.probe() if hasattr(vd, "probe") else {"note": "probe() not available"}
+            from termux_tts.engine import doctor
+            doc_rep = doctor()
+            lite["doctor"] = doc_rep
+            lite["vulkan"] = doc_rep.get("doctor_report") or {"status": doc_rep.get("status")}
         except Exception as e:
             lite["vulkan_error"] = str(e)
         lite["doctor_level"] = "full"

@@ -22,7 +22,12 @@ from .engine_dsp import ParametricDSPEngine, DSPResult, QUALITY_PRESETS
 from .engine_sherpa import SherpaNeuralEngine, SherpaResult
 from .engine_vulkan import VulkanNeuralEngine, VulkanResult
 from .engine_expressive import ExpressiveEngine, ExpressiveResult
-from .vulkan_probe import VulkanDoctor
+from .hardware import (
+    resolve_device_backend,
+    bind_tts_hardware,
+    _resolve_ameva_runtime,
+    ERROR_AMEVA_TTS_E001,
+)
 
 logger = logging.getLogger("termux_tts.engine")
 
@@ -39,6 +44,7 @@ class TTSEngine:
         threads: int = 4,
         sample_rate: Optional[int] = None,
         engine_type: str = "auto",
+        model_tier: Optional[str] = None,
     ):
         self.language = language.lower()
         self.preset = preset.lower()
@@ -47,32 +53,26 @@ class TTSEngine:
         self.model_path = model_path
         self.threads = threads
         self.sample_rate = sample_rate
-        self.device = self.requested_device
-        self.backend = "auto"
+        self.model_tier = model_tier
         self._is_closed = False
 
-        if self.requested_device in ("vulkan", "gpu"):
-            doc = VulkanDoctor()
-            if not doc.is_vulkan_available:
-                raise VulkanInitializationError(
-                    f"[FAIL-FAST] Explicit GPU backend requested ('{self.requested_device}'), "
-                    "but Vulkan hardware runtime is unavailable. Use '--device cpu' or '--device auto'."
-                )
+        # 1. Resolve effective device and engine_type via safe hardware gateway
+        self.device, effective_engine = resolve_device_backend(
+            self.requested_device, self.requested_engine_type
+        )
+        if self.requested_engine_type == "auto" and effective_engine != "auto":
+            self.requested_engine_type = effective_engine
 
-        # Attempt ameva-runtime hardware binding if available
+        self.backend = "auto"
+
+        # 2. Attempt ameva-runtime hardware binding if available
         self._binding_plan = self._bind_hardware()
 
         self.native_engine = NativeAndroidEngine(language=language)
         self.synth_engine = self._resolve_synth_engine()
 
     def _bind_hardware(self):
-        try:
-            from ameva_runtime.adapters.tts import TtsAdapter
-            binding = TtsAdapter.bind(engine=self, requested_backend=self.requested_device)
-            return binding
-        except Exception as e:
-            logger.debug("Hardware adapter binding skipped: %s", e)
-            return None
+        return bind_tts_hardware(self, self.requested_device)
 
     def _resolve_synth_engine(self):
         t = self.requested_engine_type
@@ -86,6 +86,7 @@ class TTSEngine:
                     device=self.requested_device,
                     threads=self.threads,
                     sample_rate=self.sample_rate or 22050,
+                    model_tier=self.model_tier,
                 )
             except (VulkanInitializationError, TTSModelLoadError) as err:
                 if t in ("vulkan", "gpu", "ncnn") or self.requested_device in ("vulkan", "gpu"):
@@ -214,6 +215,7 @@ def load(
     threads: int = 4,
     sample_rate: Optional[int] = None,
     engine: str = "auto",
+    tier: Optional[str] = None,
 ) -> TTSEngine:
     return TTSEngine(
         model_path=model,
@@ -223,28 +225,31 @@ def load(
         threads=threads,
         sample_rate=sample_rate,
         engine_type=engine,
+        model_tier=tier,
     )
 
 
 def doctor() -> Dict[str, Any]:
-    try:
-        from ameva_runtime import vulkan as avr
-        from ameva_runtime.vulkan.adapters import TtsAdapter
-        doc = avr.Doctor()
-        rep = doc.run_self_test(verbose=False)
-        return {
-            "doctor_report": rep,
-            "overall_success": getattr(rep, "overall_success", False),
-            "passed_stages": getattr(rep, "passed_stages", 0),
-            "recommended_backend": getattr(rep, "recommended_backend", "cpu"),
-            "status": "DIAGNOSED_VIA_AMEVA",
-        }
-    except Exception as e:
-        return {
-            "doctor_report": None,
-            "overall_success": False,
-            "passed_stages": 0,
-            "recommended_backend": "cpu_neon",
-            "error": str(e),
-            "status": "FALLBACK_CPU",
-        }
+    ameva_mod = _resolve_ameva_runtime()
+    if ameva_mod is not None:
+        try:
+            from ameva_runtime.adapters import TtsAdapter
+            adapter = TtsAdapter()
+            rep = adapter.resolve_diagnostic_report()
+            return {
+                "doctor_report": rep,
+                "overall_success": getattr(rep, "overall_success", False),
+                "passed_stages": getattr(rep, "passed_stages", 0),
+                "recommended_backend": getattr(rep, "recommended_backend", "cpu_neon"),
+                "status": "DIAGNOSED_VIA_AMEVA",
+            }
+        except Exception as e:
+            logger.debug("AMEVA Doctor invocation exception: %s", e)
+
+    return {
+        "doctor_report": None,
+        "overall_success": False,
+        "passed_stages": 0,
+        "recommended_backend": "cpu_neon",
+        "status": "NO_AMEVA_RUNTIME",
+    }

@@ -14,7 +14,6 @@ from typing import Optional
 from .exceptions import TTSInferenceError, VulkanInitializationError
 from .tokenizer import PhoneticTokenizer
 from .audio import AudioBuffer
-from .vulkan_probe import VulkanDoctor
 
 def _detect_cpu_backend() -> str:
     """Detect current host CPU architecture dynamically."""
@@ -171,21 +170,30 @@ class ParametricDSPEngine:
         self.tokenizer = PhoneticTokenizer(language=language)
         self._is_closed = False
 
-        self.doctor = VulkanDoctor()
-        self.diag_info = self.doctor.probe_all() if self.requested_device != "cpu" else {}
+        self.is_vulkan_available = False
+        self.diag_info = {}
+        if self.requested_device != "cpu":
+            try:
+                from ameva_runtime.adapters import TtsAdapter
+                rep = TtsAdapter.resolve_diagnostic_report()
+                self.is_vulkan_available = bool(getattr(rep, "overall_success", False) or getattr(rep, "recommended_backend", "") == "vulkan")
+                self.diag_info = {"recommended_backend": rep.recommended_backend, "passed_stages": rep.passed_stages}
+            except Exception as e:
+                import logging
+                logging.getLogger("termux_tts.engine_dsp").debug("TtsAdapter diagnostic check exception: %s", e)
         self.backend = self._resolve_backend()
 
     def _resolve_backend(self) -> str:
         cpu_b = _detect_cpu_backend()
         if self.requested_device in ("vulkan", "gpu"):
-            if self.doctor.is_vulkan_available:
+            if self.is_vulkan_available:
                 return "VULKAN_GPU"
             raise VulkanInitializationError(
                 f"[FAIL-FAST] Explicit GPU backend requested ('{self.requested_device}'), "
                 "but Vulkan hardware runtime is unavailable. Use '--device cpu' or '--device auto'."
             )
         elif self.requested_device == "auto":
-            return "VULKAN_GPU" if self.doctor.is_vulkan_available else cpu_b
+            return "VULKAN_GPU" if self.is_vulkan_available else cpu_b
         return cpu_b
 
     def synthesize(self, text: str, output: Optional[str] = None, speed: float = 1.0, preset: Optional[str] = None) -> DSPResult:

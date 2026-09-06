@@ -12,6 +12,8 @@ class TTSEngine {
         this.preset = options.preset || 'balanced';
         this.sampleRate = options.sampleRate || 22050;
         this.engine = options.engine || 'auto';
+        this.device = options.device || (options.gpu ? 'gpu' : 'auto');
+        this.tier = options.tier || null;
         this.model = options.model || null;
     }
 
@@ -24,6 +26,8 @@ class TTSEngine {
         const speed = typeof options.speed === 'number' ? options.speed : 1.0;
         const preset = options.preset || this.preset;
         const engineType = options.engine || this.engine;
+        const deviceType = options.device || (options.gpu ? 'gpu' : this.device);
+        const tierType = options.tier || this.tier;
         const modelPath = options.model || this.model;
 
         const payload = JSON.stringify({
@@ -34,6 +38,8 @@ class TTSEngine {
             speed: speed,
             preset: preset,
             engine: engineType,
+            device: deviceType,
+            tier: tierType,
             model: modelPath
         });
 
@@ -49,7 +55,9 @@ try:
         language=data.get('language', 'ko'),
         preset=data.get('preset', 'balanced'),
         sample_rate=data.get('sample_rate', 22050),
-        engine=data.get('engine', 'auto')
+        engine=data.get('engine', 'auto'),
+        device=data.get('device', 'auto'),
+        tier=data.get('tier', None)
     )
     res = engine.synthesize(data['text'], output=data['output'], speed=float(data.get('speed', 1.0)))
     result = {
