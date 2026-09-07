@@ -20,7 +20,7 @@ jobs:
       - name: Check if PyPI project exists
         id: check-py
         run: |
-          if [ -f "pyproject.toml" ]; then
+          if [ -f "pyproject.toml" ] || [ -f "setup.py" ]; then
             echo "has_python=true" >> $GITHUB_OUTPUT
           else
             echo "has_python=false" >> $GITHUB_OUTPUT
@@ -72,11 +72,24 @@ jobs:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
           if [ -f "package.json" ]; then
-            echo "Publishing root package.json..."
-            npm publish --access public
+            PKG_NAME=$(node -p "require('./package.json').name")
+            PKG_VER=$(node -p "require('./package.json').version")
+            if [ "$(npm view ${PKG_NAME}@${PKG_VER} version 2>/dev/null)" = "${PKG_VER}" ]; then
+              echo "Version ${PKG_VER} of ${PKG_NAME} is already published on NPM. Skipping."
+            else
+              echo "Publishing ${PKG_NAME}@${PKG_VER} to NPM..."
+              npm publish --access public
+            fi
           elif [ -f "npm/package.json" ]; then
-            echo "Publishing npm/package.json..."
-            cd npm && npm publish --access public
+            cd npm
+            PKG_NAME=$(node -p "require('./package.json').name")
+            PKG_VER=$(node -p "require('./package.json').version")
+            if [ "$(npm view ${PKG_NAME}@${PKG_VER} version 2>/dev/null)" = "${PKG_VER}" ]; then
+              echo "Version ${PKG_VER} of ${PKG_NAME} is already published on NPM. Skipping."
+            else
+              echo "Publishing ${PKG_NAME}@${PKG_VER} to NPM..."
+              npm publish --access public
+            fi
           else
             echo "No package.json found. Skipping NPM publish."
           fi
