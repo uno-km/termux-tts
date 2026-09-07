@@ -29,7 +29,7 @@ from .exceptions import (
 ONNXNeuralEngine = SherpaNeuralEngine
 ONNXResult = SherpaResult
 
-__version__ = "1.4.1"
+__version__ = "1.4.2"
 __all__ = [
     "TTSEngine",
     "load",

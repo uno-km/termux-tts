@@ -1,6 +1,6 @@
 {
   "name": "termux-tts",
-  "version": "1.4.1",
+  "version": "1.4.2",
   "description": "On-device Text-to-Speech framework utilizing device resources (DSP Formant Vocoder, ONNX Neural Runtime & Android Native Voice)",
   "main": "index.js",
   "bin": {
@@ -14,11 +14,37 @@
     "tts",
     "text-to-speech",
     "vulkan",
+    "vulkan-compute",
     "vits",
+    "piper-tts",
+    "sherpa-onnx",
+    "sherpa-ncnn",
     "termux",
     "android",
-    "onnx",
-    "speech-synthesis"
+    "on-device-ai",
+    "speech-synthesis",
+    "edge-ai",
+    "formant-synthesis",
+    "vocoder",
+    "mobile-ai",
+    "adreno",
+    "mali-gpu",
+    "dsp",
+    "rosenberg-glottal",
+    "biquad-filter",
+    "expressive-speech",
+    "voice-cloning",
+    "audio-generation",
+    "ncnn",
+    "arm64",
+    "snapdragon",
+    "exynos",
+    "real-time-factor",
+    "low-latency",
+    "zero-dependency",
+    "voice-assistant",
+    "headless-audio",
+    "embedded-systems"
   ],
   "author": "AMEVA Foundation",
   "license": "Apache-2.0",
@@ -29,4 +55,3 @@
     "node": ">=16.0.0"
   }
 }
-

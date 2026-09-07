@@ -3,7 +3,7 @@ from setuptools import setup, find_packages
 
 setup(
     name="termux-tts",
-    version="1.2.0",
+    version="1.4.2",
     description="Ultra-Fast On-Device 4-Tier Text-to-Speech Framework (DSP Synth, Android Native, C++ Sherpa-ONNX Neural & Expressive)",
     long_description=open("README.pypi.md", encoding="utf-8").read() if os.path.exists("README.pypi.md") else open("README.md", encoding="utf-8").read(),
     long_description_content_type="text/markdown",
