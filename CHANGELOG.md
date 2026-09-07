@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.4.1] - 2026-09-07
+
+### Fixed
+- Fixed npm package.json bin path specification (removed './' prefix).
+- Integrated GitHub Actions automated CI/CD release workflow.
+
+---
+
 ## [1.4.0] - 2026-09-07
 
 ### Added
@@ -24,4 +32,5 @@ All notable changes to this project will be documented in this file.
 ### Changed
 - Migrated hardware acceleration dependency to unified `ameva-runtime>=2.0.0` and `@ameva/runtime>=2.0.0`.
 - Synchronized Python and npm package versions to v1.1.4.
+
 

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "termux-tts"
-version = "1.4.0"
+version = "1.4.1"
 description = "On-device 4-Tier Text-to-Speech framework utilizing device resources (DSP Formant Vocoder, C++ Sherpa-ONNX Neural, Android Native & Expressive)"
 readme = "README.pypi.md"
 requires-python = ">=3.10"
@@ -42,3 +42,4 @@ termux-tts = "termux_tts.adapter:create_adapter"
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["termux_tts*"]
+

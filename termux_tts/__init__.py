@@ -29,7 +29,7 @@ from .exceptions import (
 ONNXNeuralEngine = SherpaNeuralEngine
 ONNXResult = SherpaResult
 
-__version__ = "1.4.0"
+__version__ = "1.4.1"
 __all__ = [
     "TTSEngine",
     "load",
@@ -61,3 +61,4 @@ __all__ = [
     "TTSAudioEncodingError",
     "TTSLanguageNotSupportedError"
 ]
+
