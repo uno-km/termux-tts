@@ -9,10 +9,37 @@ import urllib.request
 import shutil
 from pathlib import Path
 
-VULKAN_BINARY_RELEASE_URL = (
-    "https://github.com/uno-km/termux-sherpa-ncnn/releases/download/"
-    "v1.0.0-vulkan/sherpa-ncnn-offline-tts-vulkan-arm64.tar.gz"
-)
+def get_candidate_vulkan_binary_urls():
+    """Generate dynamic candidate endpoints for Vulkan binary provisioner."""
+    try:
+        from . import __version__
+    except Exception:
+        __version__ = "1.4.3"
+
+    urls = []
+    custom_tag = os.environ.get("TERMUX_TTS_RELEASE_TAG", "").strip()
+    custom_base = os.environ.get("TERMUX_TTS_RELEASE_BASE", "").strip()
+
+    if custom_base:
+        urls.append(f"{custom_base.rstrip('/')}/sherpa-ncnn-offline-tts-vulkan-arm64.tar.gz")
+    if custom_tag:
+        tag = custom_tag if custom_tag.startswith("v") else f"v{custom_tag}"
+        urls.append(f"https://github.com/uno-km/termux-tts/releases/download/{tag}/sherpa-ncnn-offline-tts-vulkan-arm64.tar.gz")
+
+    # 1. termux-tts current version SSOT
+    current_tag = f"v{__version__}"
+    urls.append(f"https://github.com/uno-km/termux-tts/releases/download/{current_tag}/sherpa-ncnn-offline-tts-vulkan-arm64.tar.gz")
+
+    # 2. termux-tts latest release
+    urls.append("https://github.com/uno-km/termux-tts/releases/latest/download/sherpa-ncnn-offline-tts-vulkan-arm64.tar.gz")
+
+    # 3. ameva-runtime unified SSOT ecosystem release fallback
+    urls.append("https://github.com/uno-km/ameva-runtime/releases/latest/download/sherpa-ncnn-offline-tts-vulkan-arm64.tar.gz")
+
+    # 4. Companion release fallback
+    urls.append("https://github.com/uno-km/termux-sherpa-ncnn/releases/download/v1.0.0-vulkan/sherpa-ncnn-offline-tts-vulkan-arm64.tar.gz")
+
+    return urls
 
 MODEL_REGISTRY = {
     "high": {
@@ -48,8 +75,13 @@ def get_install_paths():
     return bin_dir, cache_dir
 
 def download_with_progress(url: str, dest_path: Path, label: str):
+    try:
+        from . import __version__
+    except Exception:
+        __version__ = "1.4.3"
+
     print(f"  [DOWNLOADING] {label}...")
-    req = urllib.request.Request(url, headers={"User-Agent": "termux-tts-installer/1.3.0"})
+    req = urllib.request.Request(url, headers={"User-Agent": f"termux-tts-installer/{__version__} (Android; ARM64)"})
     with urllib.request.urlopen(req) as resp, open(dest_path, "wb") as out_f:
         total = int(resp.headers.get("Content-Length", 0))
         downloaded = 0
@@ -69,13 +101,30 @@ def download_with_progress(url: str, dest_path: Path, label: str):
 def install_vulkan_binary(force: bool = False) -> Path:
     bin_dir, _ = get_install_paths()
     binary_path = bin_dir / "sherpa-ncnn-offline-tts"
+    prefix_bin = Path(os.environ.get("PREFIX", "/data/data/com.termux/files/usr")) / "bin"
     
     if binary_path.exists() and not force:
         print(f"  [OK] Pre-compiled Vulkan binary already exists: {binary_path}")
         return binary_path
 
     tar_path = bin_dir / "sherpa-vulkan.tar.gz"
-    download_with_progress(VULKAN_BINARY_RELEASE_URL, tar_path, "ARM64 Vulkan Binary (3.9MB)")
+    candidate_urls = get_candidate_vulkan_binary_urls()
+    download_success = False
+
+    for url in candidate_urls:
+        try:
+            download_with_progress(url, tar_path, f"ARM64 Vulkan Binary ({url})")
+            if tar_path.exists() and tar_path.stat().st_size > 500 * 1024:
+                download_success = True
+                break
+        except Exception as dl_err:
+            print(f"  [-] Candidate URL failed ({url}): {dl_err}")
+            if tar_path.exists():
+                tar_path.unlink(missing_ok=True)
+            continue
+
+    if not download_success:
+        raise RuntimeError("Failed to download sherpa-ncnn-offline-tts from any candidate endpoints.")
 
     print("  [EXTRACTING] Installing binary to ~/.local/bin...")
     with tarfile.open(tar_path, "r:gz") as tar:
@@ -83,6 +132,17 @@ def install_vulkan_binary(force: bool = False) -> Path:
 
     tar_path.unlink(missing_ok=True)
     binary_path.chmod(0o755)
+
+    # Dual-path installation to PREFIX/bin if writable
+    try:
+        if prefix_bin.exists() and os.access(prefix_bin, os.W_OK):
+            target_prefix_bin = prefix_bin / "sherpa-ncnn-offline-tts"
+            shutil.copy2(binary_path, target_prefix_bin)
+            target_prefix_bin.chmod(0o755)
+            print(f"  [SYMLINK/COPY] Linked to {target_prefix_bin}")
+    except OSError:
+        pass
+
     print(f"  [SUCCESS] Installed: {binary_path}")
     return binary_path
 

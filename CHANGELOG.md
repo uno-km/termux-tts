@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.4.3] - 2026-09-07
+
+### Added
+- **Multi-Tier Dynamic Candidate Resolution**: Replaced single hardcoded `v1.0.0-vulkan` URL in `installer.py` with 4-tier candidate resolution (`TERMUX_TTS_RELEASE_TAG`, `v{__version__}`, `releases/latest/download`, `uno-km/ameva-runtime` SSOT fallback, and companion fallback).
+- **Dual-Path Installation**: Installs and links precompiled Vulkan binary `sherpa-ncnn-offline-tts` to both `~/.local/bin` and `$PREFIX/bin` for instant global PATH resolution.
+- **Dynamic SSOT User-Agent**: Injects dynamic package version into download requests.
+
+---
+
 ## [1.4.2] - 2026-09-07
 
 ### Added

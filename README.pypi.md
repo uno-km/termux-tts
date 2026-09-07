@@ -74,6 +74,9 @@ termux-tts install --tier medium
 termux-tts install --tier high --force --no-play
 ```
 
+* **🛡️ Zero-Hardcoding Dynamic 4-Tier Resolution**: Binary downloads resolve dynamically via `TERMUX_TTS_RELEASE_TAG` / `TERMUX_TTS_RELEASE_BASE` -> current package version `v{__version__}` -> `releases/latest/download` -> `uno-km/ameva-runtime` SSOT ecosystem release with automatic HTTP fallback.
+* **⚡ Dual-Path Deployment**: Automatically extracts and registers `sherpa-ncnn-offline-tts` into both `~/.local/bin` and `$PREFIX/bin` for immediate global command execution.
+
 Once installed, verify full Vulkan GPU compute availability:
 ```bash
 termux-tts doctor
