@@ -125,9 +125,11 @@ def normalize_numbers_english(text: str) -> str:
 class PhoneticTokenizer:
     def __init__(self, language: str = "ko"):
         self.language = language.lower()
+        if self.language in ("auto", "multilingual"):
+            self.language = "ko"
         self.vocab = VOCAB
         if self.language not in ["ko", "korean", "en", "english"]:
-            raise TTSLanguageNotSupportedError(f"Language '{language}' is not supported. Supported: ['ko', 'en']")
+            raise TTSLanguageNotSupportedError(f"Language '{language}' is not supported. Supported: ['ko', 'en', 'auto', 'multilingual']")
 
     def normalize_text(self, text: str) -> str:
         if not text or not text.strip():

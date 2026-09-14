@@ -5,8 +5,9 @@ Handles 16-bit Linear PCM formatting with soft-clipping protection.
 
 import io
 import wave
-import numpy as np
+from pathlib import Path
 from typing import Union
+import numpy as np
 from .exceptions import TTSAudioEncodingError
 
 class AudioBuffer:
@@ -89,10 +90,12 @@ class AudioBuffer:
 
     def save(self, filepath: str) -> str:
         """Save the audio buffer to a WAV file on disk."""
+        target = Path(filepath).expanduser().resolve()
         wav_data = self.to_wav_bytes()
         try:
-            with open(filepath, "wb") as f:
+            target.parent.mkdir(parents=True, exist_ok=True)
+            with open(target, "wb") as f:
                 f.write(wav_data)
-            return filepath
+            return str(target)
         except Exception as e:
             raise TTSAudioEncodingError(f"Failed to save WAV to '{filepath}': {e}") from e

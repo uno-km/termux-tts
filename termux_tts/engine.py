@@ -22,6 +22,8 @@ from .engine_dsp import ParametricDSPEngine, DSPResult, QUALITY_PRESETS
 from .engine_sherpa import SherpaNeuralEngine, SherpaResult
 from .engine_vulkan import VulkanNeuralEngine, VulkanResult
 from .engine_expressive import ExpressiveEngine, ExpressiveResult
+from .engine_multilingual import MultilingualNeuralEngine, MultilingualResult
+from .script_classifier import MultilingualTokenizer
 from .hardware import (
     resolve_device_backend,
     bind_tts_hardware,
@@ -69,6 +71,7 @@ class TTSEngine:
         self._binding_plan = self._bind_hardware()
 
         self.native_engine = NativeAndroidEngine(language=language)
+        self._multilingual_engine: Optional[MultilingualNeuralEngine] = None
         self.synth_engine = self._resolve_synth_engine()
 
     def _bind_hardware(self):
@@ -76,9 +79,15 @@ class TTSEngine:
 
     def _resolve_synth_engine(self):
         t = self.requested_engine_type
+        from .script_classifier import normalize_language_code
+        norm_lang = normalize_language_code(self.language)
 
-        # Explicit Vulkan GPU Tier (Fail-Fast)
-        if t in ("vulkan", "gpu", "ncnn") or (self.requested_device in ("vulkan", "gpu") and t in ("neural", "vits", "auto")):
+        # Extended Languages (hi, ru, ja, zh, es, fr, de, ar) route to MultilingualNeuralEngine
+        if norm_lang in ("hi", "ru", "ja", "zh", "es", "fr", "de", "ar"):
+            return self._get_multilingual_engine()
+
+        # Explicit Vulkan GPU Tier (Vulkan NCNN engine targets English Lessac)
+        if (t in ("vulkan", "gpu", "ncnn") or (self.requested_device in ("vulkan", "gpu") and t in ("neural", "vits", "auto"))) and norm_lang in ("en", "auto"):
             try:
                 return VulkanNeuralEngine(
                     model_path=self.model_path,
@@ -123,6 +132,10 @@ class TTSEngine:
                 device=self.requested_device,
                 sample_rate=self.sample_rate,
             )
+
+        # Explicit Multilingual / Code-Switching Tier
+        elif t in ("multilingual", "codeswitch", "hybrid"):
+            return self._get_multilingual_engine()
 
         # Explicit Tier 2: Native
         elif t == "native":
@@ -172,6 +185,15 @@ class TTSEngine:
     def binary(self) -> Optional[str]:
         return getattr(self.synth_engine, "binary", getattr(self.native_engine, "binary", None))
 
+    def _get_multilingual_engine(self) -> MultilingualNeuralEngine:
+        if self._multilingual_engine is None:
+            self._multilingual_engine = MultilingualNeuralEngine(
+                threads=self.threads,
+                device=self.device,
+                sample_rate=self.sample_rate or 22050,
+            )
+        return self._multilingual_engine
+
     def speak(self, text: str, stream: Optional[str] = None) -> NativeResult:
         """Speak text directly through physical Android speaker (Native Engine)."""
         if self._is_closed:
@@ -184,14 +206,56 @@ class TTSEngine:
         output: Optional[str] = None,
         speed: float = 1.0,
         preset: Optional[str] = None,
-    ) -> Union[DSPResult, SherpaResult, ExpressiveResult, NativeResult]:
-        """Synthesize text into speech audio buffer / WAV file."""
+        language: Optional[str] = None,
+    ) -> Union[DSPResult, SherpaResult, ExpressiveResult, NativeResult, MultilingualResult]:
+        """Synthesize text into speech audio buffer / WAV file with Zero-Config intelligent routing."""
         if self._is_closed:
             raise TTSInferenceError("Cannot synthesize: Engine session is closed.")
+
+        clean_text = text.strip() if text else ""
+        if not clean_text:
+            raise TTSInferenceError("Cannot synthesize empty text.")
+
+        from .script_classifier import normalize_language_code
+        target_lang = normalize_language_code(language or self.language)
+
+        # 1. If user explicitly pinned to lightweight DSP (0MB), respect choice
+        if self.requested_engine_type in ("dsp", "synth", "formant") or self.device == "dsp":
+            return self.synth_engine.synthesize(clean_text, output=output, speed=speed, preset=preset)
+
+        # 2. If user explicitly pinned to OS Native voice, speak directly
+        if self.requested_engine_type == "native":
+            return self.native_engine.speak(clean_text)
+
+        # 3. Multilingual auto-detection:
+        # Route to MultilingualNeuralEngine if multiple languages are present in text
+        # or if caller specifically requested multilingual / hybrid engine.
+        detected_langs = MultilingualTokenizer.detect_languages(clean_text)
+        is_mixed_text = len(detected_langs) > 1
+
+        should_route_multilingual = (
+            (self.requested_engine_type in ("auto", "multilingual", "codeswitch", "hybrid")) or
+            (is_mixed_text and self.requested_engine_type not in ("dsp", "synth", "native") and self.device != "dsp" and (self._multilingual_engine is not None or not isinstance(self.synth_engine, ParametricDSPEngine))) or
+            (target_lang in ("hi", "ru", "ja", "zh", "es", "fr", "de", "ar") and self.requested_engine_type not in ("dsp", "synth", "native"))
+        )
+
+        if should_route_multilingual:
+            multi_engine = self._get_multilingual_engine()
+            kwargs = {}
+            if target_lang != "auto":
+                kwargs["language"] = target_lang
+            return multi_engine.synthesize(
+                clean_text,
+                output=output,
+                speed=speed,
+                **kwargs
+            )
+
+        # 4. Standard single-language engine
         if hasattr(self.synth_engine, "synthesize"):
-            return self.synth_engine.synthesize(text, output=output, speed=speed, preset=preset)
+            return self.synth_engine.synthesize(clean_text, output=output, speed=speed, preset=preset)
         elif hasattr(self.synth_engine, "speak"):
-            return self.synth_engine.speak(text)
+            return self.synth_engine.speak(clean_text)
         raise TTSInferenceError(f"Selected engine '{type(self.synth_engine).__name__}' does not support synthesize.")
 
     def close(self) -> None:
@@ -199,6 +263,8 @@ class TTSEngine:
         self.native_engine.close()
         if hasattr(self.synth_engine, "close"):
             self.synth_engine.close()
+        if self._multilingual_engine is not None:
+            self._multilingual_engine.close()
 
     def __enter__(self):
         return self
@@ -209,7 +275,7 @@ class TTSEngine:
 
 def load(
     model: Optional[str] = None,
-    language: str = "ko",
+    language: str = "auto",
     preset: str = "balanced",
     device: str = "auto",
     threads: int = 4,

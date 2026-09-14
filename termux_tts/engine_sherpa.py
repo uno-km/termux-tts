@@ -109,7 +109,8 @@ class SherpaNeuralEngine:
             elif p.is_file():
                 search_dirs = [p.parent]
         else:
-            search_dirs = list(self.STANDARD_MODEL_DIRS)
+            from .hardware import get_unified_model_search_dirs
+            search_dirs = list(get_unified_model_search_dirs("tts"))
 
         # 1. Find directory containing .onnx model, tokens.txt, and espeak-ng-data
         for sdir in search_dirs:

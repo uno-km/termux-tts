@@ -11,6 +11,12 @@ import argparse
 from .engine import load, doctor
 
 def main():
+    # Route to default subcommand 'synth' if no recognized subcommand is given
+    KNOWN_COMMANDS = {"synth", "speak", "doctor", "install", "component", "model", "instance"}
+    raw_args = sys.argv[1:]
+    if raw_args and raw_args[0] not in KNOWN_COMMANDS and raw_args[0] not in ("-h", "--help", "-v", "--version"):
+        sys.argv.insert(1, "synth")
+
     parser = argparse.ArgumentParser(
         prog="termux-tts",
         description="Termux Neural & Native Text-to-Speech Engine"
@@ -19,13 +25,14 @@ def main():
 
     # 1. Synth (4-Tier Speech Synthesis)
     synth_parser = subparsers.add_parser("synth", help="Synthesize text to audio WAV file (Synth, Neural, Expressive)")
-    synth_parser.add_argument("-t", "--text", required=True, help="Input text to synthesize")
+    synth_parser.add_argument("text_pos", nargs="*", default=[], help="Input text to synthesize (positional)")
+    synth_parser.add_argument("-t", "--text", default=None, help="Input text to synthesize (flag)")
     synth_parser.add_argument("-o", "--output", default="output.wav", help="Output WAV filepath")
-    synth_parser.add_argument("-l", "--lang", default="ko", help="Language code (ko, en)")
+    synth_parser.add_argument("-l", "--lang", default="auto", help="Language code (auto=Multi-language auto switch, ko/kor=Korean only, en/eng=English only, ja/jpn=Japanese only)")
     synth_parser.add_argument(
         "-e", "--engine", default="auto",
-        choices=["auto", "vulkan", "ncnn", "gpu", "synth", "dsp", "native", "neural", "onnx", "expressive"],
-        help="Synthesis engine tier (vulkan=GPU NCNN, synth=0MB DSP, native=Android voice, neural=VITS C++, expressive=emotional)"
+        choices=["auto", "vulkan", "ncnn", "gpu", "synth", "dsp", "native", "neural", "onnx", "expressive", "multilingual", "hybrid"],
+        help="Synthesis engine tier (auto=Smart Routing, vulkan=GPU NCNN, synth=0MB DSP, native=Android voice, neural=VITS C++, expressive=emotional, multilingual=Cross-language)"
     )
     synth_parser.add_argument("-m", "--model", default=None, help="Path to model file or directory")
     synth_parser.add_argument("-p", "--preset", default="balanced", choices=["fast", "balanced", "expressive", "ultra"])
@@ -52,6 +59,10 @@ def main():
     # 4. Install (One-Click Automated Provisioner)
     install_parser = subparsers.add_parser("install", help="1-Click download and provision precompiled Vulkan binary & VITS studio models")
     install_parser.add_argument("--tier", default="high", choices=["high", "medium"], help="Model resolution tier (high=57MB Studio FP16, medium=25MB Fast)")
+    install_parser.add_argument(
+        "--models", default="default",
+        help="Language model packages to provision: default (Korean & English only), or specific code: hi, ja, zh, ru, es, fr, de, or 'all'"
+    )
     install_parser.add_argument("--force", action="store_true", help="Force overwrite existing binary and model assets")
     install_parser.add_argument("--no-play", action="store_true", help="Skip playback verification during self-test")
 
@@ -75,6 +86,12 @@ def main():
             subprocess.run(["termux-volume", "music", str(args.volume)], check=False)
 
     if args.command == "synth":
+        pos_text = " ".join(args.text_pos).strip() if getattr(args, "text_pos", None) else None
+        target_text = args.text or (pos_text if pos_text else None)
+        if not target_text:
+            synth_parser.error("the following arguments are required: text (as positional arguments or -t/--text)")
+
+        out_path = os.path.expanduser(args.output) if args.output else None
         with load(
             model=args.model,
             language=args.lang,
@@ -84,20 +101,20 @@ def main():
             engine=args.engine,
             tier=getattr(args, "tier", None),
         ) as engine:
-            res = engine.synthesize(args.text, output=args.output, speed=args.speed)
+            res = engine.synthesize(target_text, output=out_path, speed=args.speed, language=args.lang)
             backend_name = getattr(res, "backend", "UNKNOWN")
             model_name = getattr(res, "model_name", "model")
             dur = getattr(res, "duration_sec", 0.0)
             elapsed = getattr(res, "elapsed_ms", 0.0)
             rtf = getattr(res, "rtf", 0.0)
-            print(f"[SUCCESS] Synthesized via {backend_name} ({model_name}) -> {args.output}")
+            print(f"[SUCCESS] Synthesized via {backend_name} ({model_name}) -> {out_path or args.output}")
             print(f"  Duration: {dur:.2f}s | Elapsed: {elapsed:.1f}ms | RTF: {rtf:.4f}x")
 
-            if args.play and args.output and os.path.exists(args.output):
+            if args.play and out_path and os.path.exists(out_path):
                 if shutil.which("termux-media-player"):
-                    subprocess.run(["termux-media-player", "play", args.output], check=False)
+                    subprocess.run(["termux-media-player", "play", out_path], check=False)
                 elif shutil.which("play-audio"):
-                    subprocess.run(["play-audio", args.output], check=False)
+                    subprocess.run(["play-audio", out_path], check=False)
 
     elif args.command == "speak":
         with load(language=args.lang) as engine:
@@ -115,7 +132,7 @@ def main():
 
     elif args.command == "install":
         from .installer import run_installation
-        run_installation(tier=args.tier, force=args.force, play=not args.no_play)
+        run_installation(tier=args.tier, models=getattr(args, "models", "all"), force=args.force, play=not args.no_play)
 
     elif args.command in ("component", "model", "instance") and _protocol_available:
         from ameva_component.cli_support import dispatch_protocol

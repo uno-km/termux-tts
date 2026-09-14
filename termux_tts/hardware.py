@@ -95,7 +95,7 @@ def resolve_device_backend(
             report = adapter.resolve_diagnostic_report()
             is_vk = getattr(report, "overall_success", False) or getattr(report, "recommended_backend", "") == "vulkan"
             bin_path = adapter.resolve_binary_path()
-            if is_vk and bin_path and req_eng in ("auto", "neural", "vits"):
+            if is_vk and bin_path and req_eng in ("vulkan", "gpu"):
                 return "vulkan", "vulkan"
         except Exception as e:
             logger.debug("TtsAdapter auto-routing probe exception: %s", e)
@@ -119,3 +119,36 @@ def bind_tts_hardware(engine: Any, requested_device: str) -> Optional[Any]:
     except Exception as e:
         logger.debug("Hardware adapter binding skipped: %s", e)
         return None
+
+
+def get_unified_model_search_dirs(submodule: str = "tts") -> list:
+    """
+    Returns unified model search paths adhering to AMEVA Ecosystem Shared Storage Specification.
+    Enables zero-redundancy model sharing across STT, TTS, LLaMA, Vision, and Diffusion.
+    """
+    import os
+    from pathlib import Path
+
+    home = Path.home()
+    dirs = []
+
+    env_dir = os.environ.get("AMEVA_MODELS_DIR")
+    if env_dir:
+        p = Path(env_dir)
+        dirs.extend([p / submodule, p])
+
+    dirs.extend([
+        home / "models" / submodule,
+        home / "models",
+        home / "ameva-models" / submodule,
+        home / "ameva-models",
+        home / ".cache" / "ameva" / "models" / submodule,
+        home / ".cache" / "ameva" / "models",
+        Path(f"/data/data/com.termux/files/home/models/{submodule}"),
+        Path("/data/data/com.termux/files/home/models"),
+        Path(f"/data/data/com.termux/files/home/ameva-models/{submodule}"),
+        Path("/data/data/com.termux/files/home/ameva-models"),
+        home / ".cache" / f"termux-{submodule}" / "models",
+        Path(f"/data/data/com.termux/files/home/.cache/termux-{submodule}/models"),
+    ])
+    return dirs

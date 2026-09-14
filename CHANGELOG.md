@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.4.4] - 2026-09-14
+
+### Added
+- **Multilingual Neural Orchestrator**: Integrated `MultilingualNeuralEngine` capable of dynamic cross-language code-switching across 9 official languages (ko, en, ja, zh, hi, ru, es, fr, de).
+- **Resident C-API Acceleration**: Implemented `SherpaResidentManager` and `SherpaCapiSession` for in-memory model caching via direct C-API bindings, achieving sub-0.18x RTF and eliminating subprocess invocation overhead.
+- **Zero-Config CLI Ergonomics**: Promoted speech synthesis (`synth`) as the default top-level subcommand; allows direct positional text (`termux-tts "text" --play`); eliminated necessity of `-e multilingual` flag.
+- **Universal Unicode Script Classifier**: Built `MultilingualTokenizer` covering Hangul, Latin, Devanagari (Hindi), Cyrillic (Russian), CJK, and Arabic scripts with 50ms smooth pause padding.
+- **On-Demand Model Provisioning & Self-Healing**: Enhanced `termux-tts install` to provision English/Korean by default, with on-demand flags (`--models hi/ja/ru/zh/all`) and actionable English guidance with absolute paths for uninstalled models.
+- **Defensive Path Resolution**: Hardened path parsing across `AudioBuffer.save()` and CLI entrypoints with automatic directory creation and `Path.expanduser()` resolution.
+
+---
+
 ## [1.4.3] - 2026-09-07
 
 ### Added

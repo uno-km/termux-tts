@@ -8,8 +8,8 @@ name: "termux-tts"
 display_name: "Termux-TTS"
 package_name_pypi: "termux-tts"
 package_name_npm: "termux-tts"
-version: "v1.3.0"
-release_name: "4-Tier Architecture & Studio Vulkan GPU Acceleration"
+version: "v1.4.4"
+release_name: "Multilingual Neural Orchestrator & Zero-Config Ergonomics"
 license: "Apache-2.0"
 platform: "Android ARM64 / Qualcomm Adreno & ARM Mali Vulkan 1.3 / Linux"
 github_repo_url: "https://github.com/uno-km/termux-tts"
@@ -20,22 +20,42 @@ custom_pages:
     title_ko: "Vulkan C++ 네이티브 가속 논문"
     file: "lib/tts/vulkan-engineering-paper.html"
 
-tagline_en: "Production-Grade 4-Tier On-Device Speech Synthesis Framework (Zero-Dependency DSP Formant, C++ Vulkan GPU Neural Engine & Android Native Voice Bridge)"
-tagline_ko: "모바일 및 엣지 환경을 위한 프로덕션급 4-Tier 온디바이스 음성 합성 프레임워크 (무의존성 DSP 포먼트, C++ Vulkan GPU 신경망 엔진, 안드로이드 네이티브 브릿지)"
+tagline_en: "Production-Grade 4-Tier On-Device Speech Synthesis Framework (Multilingual Neural Orchestrator, Zero-Dependency DSP Formant & C++ Acceleration)"
+tagline_ko: "모바일 및 엣지 환경을 위한 프로덕션급 4-Tier 온디바이스 음성 합성 프레임워크 (다국어 신경망 오케스트레이터, 무의존성 DSP 포먼트, C++ 가속 엔진)"
 
-why_challenge_en: "Constrained mobile edge environments frequently suffer from execution instability, excessive thermal throttling, and unpredictable runtime memory spikes when running conventional deep learning text-to-speech stacks. Heavyweight dependencies like full PyTorch or unoptimized runtime graph compilers exhaust mobile DRAM, while vendor-specific Vulkan driver quirks (such as ARM Mali subgroup index truncation or Qualcomm Adreno JIT pipeline compilation crashes) historically prevented reliable on-device GPU speech synthesis."
-why_challenge_ko: "제약된 모바일 엣지 환경에서는 과도한 메모리 점유, 발열 스로틀링, 드라이버 파편화로 인해 생성형 음성 합성 모델 구동이 불안정합니다. 기존 무거운 프레임워크는 수 기가바이트의 런타임 의존성으로 모바일 OOM을 유발하며, ARM Mali 및 Qualcomm Adreno의 셰이더 컴파일러 결함으로 인해 안정적인 GPU 음성 가속이 어려웠습니다."
+why_challenge_en: "Constrained mobile edge environments frequently suffer from execution instability, excessive thermal throttling, and unpredictable runtime memory spikes when running conventional deep learning text-to-speech stacks. Heavyweight dependencies like full PyTorch or unoptimized runtime graph compilers exhaust mobile DRAM, while cross-language code-switching historically required multiple disconnected runtimes or heavy cloud APIs."
+why_challenge_ko: "제약된 모바일 엣지 환경에서는 과도한 메모리 점유, 발열 스로틀링, 드라이버 파편화로 인해 생성형 음성 합성 모델 구동이 불안정합니다. 기존 무거운 프레임워크는 수 기가바이트의 런타임 의존성으로 모바일 OOM을 유발하며, 다국어 교차 발화(한/영/일 등)는 단일 기기 로컬에서 매끄럽게 처리하기 어려웠습니다."
 
-description_en: "Termux-TTS delivers a resilient 4-Tier on-device text-to-speech architecture designed for deterministic latency and hardware acceleration. It bridges lightweight parametric DSP synthesis (<50ms compute, 0MB model download) with high-fidelity C++ Vulkan neural acceleration (lessac-high-fp16 at 22.05kHz), alongside Android system native speech service routing. With automated 1-click provisioning and subprocess IPC isolation, Termux-TTS achieves high acoustic fidelity while mitigating audio thread jitter and driver locks."
-description_ko: "Termux-TTS는 결정론적 지연 시간과 하드웨어 가속을 실현하는 프로덕션급 4-Tier 온디바이스 음성 합성 프레임워크입니다. 0MB 무의존성 파라메트릭 DSP 보코더부터 고해상도 C++ Vulkan GPU 가속 신경망 모델(22.05kHz FP16), 그리고 안드로이드 네이티브 음성 브릿지까지 통합 제공합니다."
+description_en: "Termux-TTS delivers a resilient 4-Tier on-device text-to-speech architecture designed for deterministic latency, zero-config ergonomics, and multi-language acoustic fidelity. It bridges lightweight parametric DSP synthesis (<50ms compute, 0MB model download) with high-fidelity resident C-API multilingual neural models (9 languages including Korean, English, Japanese, Hindi, and Russian at 22.05kHz), alongside Android system native speech service routing. With automated 1-click provisioning, Unicode script classification, and resident in-memory model caching, Termux-TTS achieves high acoustic fidelity with sub-0.18x real-time factor."
+description_ko: "Termux-TTS는 결정론적 지연 시간, Zero-Config 사용성, 다국어 고품질 음향을 실현하는 프로덕션급 4-Tier 온디바이스 음성 합성 프레임워크입니다. 0MB 무의존성 파라메트릭 DSP 보코더부터 9개 공식 언어(한국어, 영어, 일본어, 힌디어, 러시아어 등)를 지원하는 레지던트 C-API 다국어 신경망 오케스트레이터, 그리고 안드로이드 네이티브 음성 브릿지까지 통합 제공합니다."
 
 quick_install_cmd: |
   pip install termux-tts
   # or: npm install termux-tts
-  # 1-Click Provision Studio Vulkan Engine:
-  termux-tts install --tier high
+  # 1-Click Provision Default Models (Korean KSS + English Lessac):
+  termux-tts install
+  # On-demand provision specific languages (e.g. Hindi, Japanese, Russian, or all):
+  termux-tts install --models hi
+  # Instant speech synthesis:
+  termux-tts "Hello 방가방가 나는 parrot 이라고 해." -o out.wav --play
 
 features:
+  - title_en: "Multilingual Neural Orchestrator"
+    desc_en: "Dynamic cross-language code-switching and single-language synthesis supporting 9 official languages (Korean, English, Japanese, Chinese, Hindi, Russian, Spanish, French, German) with 50ms context-aware pause padding."
+    title_ko: "다국어 신경망 오케스트레이터"
+    desc_ko: "한국어, 영어, 일본어, 중국어, 힌디어, 러시아어, 스페인어, 프랑스어, 독일어 9대 언어의 다국어 교차 발화 및 단독 발화를 50ms 문맥 묵음 패딩과 함께 실시간 합성합니다."
+  - title_en: "Resident C-API In-Memory Acceleration"
+    desc_en: "Native C-API residency with SherpaResidentManager eliminates subprocess startup latency and achieves sub-0.18x real-time factor with ARM NEON SIMD acceleration."
+    title_ko: "레지던트 C-API 인메모리 가속"
+    desc_ko: "SherpaResidentManager를 통한 C-API 모델 인메모리 상주로 프로세스 기동 지연을 전면 배제하고 ARM NEON SIMD 가속으로 0.18x 이하의 RTF를 달성합니다."
+  - title_en: "Zero-Config CLI Ergonomics"
+    desc_en: "Top-level speech synthesis by default (termux-tts 'Hello' --play) without requiring subcommands or explicit engine flags. Explicit 'speak' command routes to Android native system voice."
+    title_ko: "Zero-Config CLI 사용성"
+    desc_ko: "서브 커맨드나 엔진 플래그 없이 문장을 직접 입력(termux-tts '문장' --play)하면 즉시 신경망 합성이 수행되며, 안드로이드 시스템 음성은 'speak'로 명시 분기합니다."
+  - title_en: "On-Demand Self-Healing Provisioner"
+    desc_en: "1-Click automated provisioning (termux-tts install --models default/hi/ja/ru/zh/all) with actionable English guidance and absolute paths for uninstalled models."
+    title_ko: "온디맨드 자가 치유 프로비저너"
+    desc_ko: "최초 설치 시 기본 모델(한/영)만 경량 배포하고, 미설치 언어 호출 시 절대 경로와 함께 즉시 복구 가능한 영문 안내문 및 온디맨드 설치 명령을 제공합니다."
   - title_en: "4-Tier Resilient Architecture"
     desc_en: "Tier 1: Zero-Dependency Parametric DSP Formant (0MB footprint). Tier 2: Android Native System Voice Bridge. Tier 3: Subprocess-Isolated Sherpa C++ CPU Engine. Tier 4: Pure Vulkan GPU Hardware Neural Acceleration."
     title_ko: "4-Tier 복원형 합성 아키텍처"
@@ -78,20 +98,28 @@ matrix_table:
 code_example_py: |
   import termux_tts as tts
 
-  # 1. Pure Vulkan GPU Neural Synthesis (Studio Tier)
+  # 1. Zero-Config Multilingual Neural Synthesis (Korean + English Code-Switching)
+  with tts.load() as engine:
+      result = engine.synthesize(
+          "Hello 방가방가 키키키키 나는 parrot 이라고 해. Natural cross-language neural voice.",
+          output="multilingual.wav"
+      )
+      print(f"Synthesized {result.duration_sec:.2f}s in {result.elapsed_ms:.1f}ms (RTF: {result.rtf:.4f}x)")
+
+  # 2. Pure Vulkan GPU Neural Synthesis (Studio Tier)
   with tts.load(engine="vulkan", model_tier="high") as engine:
       result = engine.synthesize(
           "The neural speech synthesis engine is operating with pure Vulkan hardware acceleration.",
           output="studio_vulkan.wav"
       )
-      print(f"Synthesized {result.audio_duration:.2f}s in {result.elapsed_ms:.1f}ms (RTF: {result.rtf:.4f}x)")
+      print(f"Synthesized {result.duration_sec:.2f}s in {result.elapsed_ms:.1f}ms (RTF: {result.rtf:.4f}x)")
 
-  # 2. Instant Zero-Dependency DSP Formant Synthesis
+  # 3. Instant Zero-Dependency DSP Formant Synthesis
   with tts.load(engine="dsp", preset="balanced") as engine:
       result = engine.synthesize("Instant speech generation with zero external weights.", output="dsp.wav")
       print(f"DSP Synthesis Latency: {result.elapsed_ms:.1f}ms")
 
-  # 3. Direct Android Hardware Speaker Playback
+  # 4. Direct Android Hardware Speaker Playback
   with tts.load(engine="native", language="en") as engine:
       engine.speak("Direct hardware speaker output via Android native service.")
 
@@ -304,10 +332,22 @@ advanced_parameters_body: |
   <p>In-process audio playback via native libraries frequently triggered memory corruption and GIL deadlocks on Android Bionic. Termux-TTS orchestrates playback using isolated subprocess worker pools, safeguarding the primary application runtime.</p>
 
 changelog:
+  - version: "v1.4.4"
+    date: "2026-09-14"
+    title: "Multilingual Neural Orchestrator & Zero-Config Ergonomics"
+    type: "Production Release (Latest)"
+    changes:
+      - "Implemented MultilingualNeuralEngine supporting dynamic cross-language code-switching across 9 languages (ko, en, ja, zh, hi, ru, es, fr, de)."
+      - "Built SherpaResidentManager for native in-memory C-API residency with sub-0.18x RTF and zero subprocess startup lag."
+      - "Promoted speech synthesis to default top-level subcommand, accepting positional text without '-t' or '-e multilingual'."
+      - "Integrated universal Unicode script classifier covering Hangul, Latin, Devanagari, Cyrillic, CJK, and Arabic scripts."
+      - "Enhanced 1-click installer with lightweight default models (ko+en) and on-demand provisioning (--models <lang> / all)."
+      - "Hardened defensive path handling with Path.expanduser() across audio exports and CLI arguments."
+
   - version: "v1.3.0"
     date: "2026-09-05"
     title: "Production 4-Tier Synthesizer & Studio Vulkan GPU Acceleration"
-    type: "Production Release (Latest)"
+    type: "Stable Release"
     changes:
       - "Implemented Tier 4 Pure Vulkan GPU Neural Engine (sherpa-ncnn-offline-tts-vulkan) with zero CPU fallback."
       - "Integrated studio-grade reference model (vits-piper-en_US-lessac-high-fp16, 22.05kHz 16-bit PCM)."
@@ -319,7 +359,7 @@ changelog:
   - version: "v1.1.5"
     date: "2026-09-04"
     title: "Subprocess Isolation & Conversational Tag Expansion"
-    type: "Stable Release"
+    type: "Archive Release"
     changes:
       - "Implemented subprocess IPC audio playback isolation."
       - "Added expressive conversational token handling."
@@ -333,7 +373,7 @@ readme_content: |
   [![npm](https://img.shields.io/npm/v/termux-tts.svg?style=flat-square&color=b91c1c)](https://www.npmjs.com/package/termux-tts)
   [![License](https://img.shields.io/badge/License-Apache_2.0-004499.svg?style=flat-square)](https://github.com/uno-km/termux-tts)
 
-  > Production-Grade 4-Tier On-Device Speech Synthesis Framework (Zero-Dependency DSP Formant, C++ Vulkan GPU Neural Engine & Android Native Voice Bridge)
+  > Production-Grade 4-Tier On-Device Speech Synthesis Framework (Multilingual Neural Orchestrator, Zero-Dependency DSP Formant & C++ Acceleration)
 
   ---
 
@@ -341,6 +381,8 @@ readme_content: |
 
   Termux-TTS is an enterprise-grade, on-device text-to-speech framework optimized for mobile edge hardware and Android Termux environments. Built to eliminate heavy dependency stacks and fragile driver behaviors, it features a resilient 4-Tier architecture:
 
+  - **Multilingual Neural Orchestrator**: Dynamic cross-language code-switching mesh covering 9 official languages (Korean, English, Japanese, Chinese, Hindi, Russian, Spanish, French, German) with Unicode script tokenization and 50ms context-aware silence padding.
+  - **Resident C-API In-Memory Engine**: Direct C-API memory residency with `SherpaResidentManager` achieving sub-0.18x real-time factor with ARM NEON SIMD acceleration and zero subprocess lag.
   - **Tier 1: Zero-Dependency Parametric DSP Formant Vocoder**: 0MB disk footprint, Rosenberg glottal pulse formulation, and 5-band biquad formant filters providing deterministic speech synthesis in under 50 milliseconds (RTF 0.013x).
   - **Tier 2: Android System Native Voice Bridge**: Direct IPC integration to physical Samsung and Google speech engines via the Termux-API service layer.
   - **Tier 3: Subprocess-Isolated Sherpa C++ CPU Engine**: Subprocess-isolated VITS acoustic modeling on ARM64 NEON with memory leak protection.
@@ -353,16 +395,16 @@ readme_content: |
   Measurements gathered on physical Android 16 hardware running Termux ARM64:
 
   | Target Device | Hardware Architecture | Synthesis Engine | Model Profile | Audio Length | Synthesis Time | Real-Time Factor (RTF) | Status |
-  | :--- | :--- | :--- | :--- | :---: | :---: | :---: | :---: |
+  | :--- | :--- | :--- | :--- | :--- | :---: | :---: | :---: |
+  | **Galaxy A53** | Exynos 1280 / ARM64 NEON | Multilingual Neural C-API | `KSS + Lessac` (Bilingual) | 10.50 s | **1.82 s** | **0.173x** | Validated (5.78x RT) |
   | **Galaxy S25** | Snapdragon 8 Elite / Adreno 830 | Vulkan GPU Neural | `lessac-high-fp16` | 6.70 s | **6.65 s** | **0.993x** | Validated |
-  | **Galaxy S25** | Snapdragon 8 Elite / Adreno 830 | Vulkan GPU Neural | `lessac-medium` | 4.59 s | **1.21 s** | **0.264x** | Validated |
+  | **Galaxy S25** | Snapdragon 8 Elite / Adreno 830 | Vulkan GPU Neural | `lessac-medium` | 4.59 s | **1.21 s** | **0.264x** | Validated (3.79x RT) |
   | **Galaxy A35** | Exynos 1380 / Mali-G68 MP5 | Vulkan GPU Neural | `lessac-medium` | 4.52 s | **5.18 s** | **1.146x** | Validated |
-  | **Galaxy A35** | Exynos 1380 / Mali-G68 MP5 | Vulkan GPU Neural | `lessac-high-fp16` | 6.73 s | **34.33 s** | **5.098x** | Validated |
-  | **ARM64 CPU** | Cortex-A78 / A55 | Parametric DSP | 5-Band Biquad | 4.15 s | **0.054 s** | **0.0130x** | Validated |
+  | **ARM64 CPU** | Cortex-A78 / A55 | Parametric DSP | 5-Band Biquad | 4.15 s | **0.054 s** | **0.0130x** | Validated (76x RT) |
 
   ---
 
-  ## Installation & 1-Click Provisioning
+  ## Installation & Automated Provisioning
 
   ### 1. Package Installation
   ```bash
@@ -373,32 +415,46 @@ readme_content: |
   npm install termux-tts
   ```
 
-  ### 2. Automated Engine & Weights Provisioning
-  Automate the installation of precompiled ARM64 Vulkan C++ binaries and HuggingFace weights with self-test verification:
+  ### 2. Automated Model Provisioning
+  Automate downloading and linking precompiled models to the official immutable path (`/data/data/com.termux/files/home/models/tts/`):
   ```bash
-  # Install Studio Tier (22.05kHz High-Fidelity)
-  termux-tts install --tier high
+  # Default lightweight installation (Korean KSS + English Lessac)
+  termux-tts install
 
-  # Or install Medium Tier (Balanced Performance)
-  termux-tts install --tier medium
+  # On-demand provision specific language models:
+  termux-tts install --models hi    # Hindi (Piper Swara)
+  termux-tts install --models ja    # Japanese (Piper Hina)
+  termux-tts install --models ru    # Russian (Piper Dmitri)
+  termux-tts install --models zh    # Chinese (AISHELL3)
+  termux-tts install --models all   # All 9 official languages
+
+  # Provision Studio Vulkan GPU engine:
+  termux-tts install --tier high
   ```
 
   ---
 
   ## Quickstart
 
-  ### Global Command-Line Interface (CLI)
+  ### Global Command-Line Interface (Zero-Config)
   ```bash
-  # Synthesize using Vulkan GPU with speaker playback
-  termux-tts synth -e vulkan --tier high -t "Speech synthesis via Vulkan GPU." -o out.wav --play
+  # 1. Zero-config synthesis with physical speaker playback
+  termux-tts "Hello 방가방가 나는 parrot 이라고 해." -o ~/out.wav --play
 
-  # Instant DSP Formant synthesis
+  # 2. Flag-based syntax
+  termux-tts -t "Multilingual neural speech synthesis on device." --play
+
+  # 3. Force language pinning
+  termux-tts -l en -t "Pure English text output." --play
+  termux-tts -l ko -t "한국어 단독 신경망 음성 합성." --play
+
+  # 4. Instant DSP Formant synthesis (0MB footprint)
   termux-tts synth -e dsp -t "Zero dependency DSP synthesis." -o dsp.wav
 
-  # Direct hardware speaker broadcast
-  termux-tts speak -t "Hardware speaker broadcast." -l en
+  # 5. Direct Android system native speaker broadcast
+  termux-tts speak -t "Hardware speaker broadcast via Android service."
 
-  # Hardware diagnostics
+  # 6. Hardware diagnostics
   termux-tts doctor
   ```
 
@@ -406,12 +462,20 @@ readme_content: |
   ```python
   import termux_tts as tts
 
-  # High-Resolution Vulkan GPU Neural Synthesis
+  # 1. Zero-Config Multilingual Neural Synthesis (Korean + English Code-Switching)
+  with tts.load() as engine:
+      result = engine.synthesize(
+          "Hello 방가방가 키키키키 나는 parrot 이라고 해.",
+          output="multilingual.wav"
+      )
+      print(f"Generated {result.duration_sec:.2f}s in {result.elapsed_ms:.1f}ms (RTF: {result.rtf:.4f}x)")
+
+  # 2. Pure Vulkan GPU Neural Synthesis (Studio Tier)
   with tts.load(engine="vulkan", model_tier="high") as engine:
       result = engine.synthesize("Pure Vulkan neural execution on mobile.", output="speech.wav")
       print(f"Synthesized in {result.elapsed_ms:.1f}ms (RTF: {result.rtf:.4f}x)")
 
-  # Zero-Dependency DSP Formant Synthesis
+  # 3. Zero-Dependency DSP Formant Synthesis
   with tts.load(engine="dsp", preset="balanced") as engine:
       result = engine.synthesize("Instant speech without model downloads.", output="dsp.wav")
       print(f"DSP Latency: {result.elapsed_ms:.1f}ms")

@@ -14,7 +14,7 @@ def get_candidate_vulkan_binary_urls():
     try:
         from . import __version__
     except Exception:
-        __version__ = "1.4.3"
+        __version__ = "1.4.4"
 
     urls = []
     custom_tag = os.environ.get("TERMUX_TTS_RELEASE_TAG", "").strip()
@@ -30,13 +30,10 @@ def get_candidate_vulkan_binary_urls():
     current_tag = f"v{__version__}"
     urls.append(f"https://github.com/uno-km/termux-tts/releases/download/{current_tag}/sherpa-ncnn-offline-tts-vulkan-arm64.tar.gz")
 
-    # 2. termux-tts latest release
+    # 2. termux-tts latest release (verified HTTP 200)
     urls.append("https://github.com/uno-km/termux-tts/releases/latest/download/sherpa-ncnn-offline-tts-vulkan-arm64.tar.gz")
 
-    # 3. ameva-runtime unified SSOT ecosystem release fallback
-    urls.append("https://github.com/uno-km/ameva-runtime/releases/latest/download/sherpa-ncnn-offline-tts-vulkan-arm64.tar.gz")
-
-    # 4. Companion release fallback
+    # 3. Companion release fallback (verified HTTP 200)
     urls.append("https://github.com/uno-km/termux-sherpa-ncnn/releases/download/v1.0.0-vulkan/sherpa-ncnn-offline-tts-vulkan-arm64.tar.gz")
 
     return urls
@@ -66,19 +63,87 @@ MODEL_REGISTRY = {
     }
 }
 
+OFFICIAL_NEURAL_MODELS = {
+    "ko": {
+        "name": "vits-mimic3-ko_KO-kss_low",
+        "url": "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-mimic3-ko_KO-kss_low.tar.bz2",
+        "repo": "csukuangfj/vits-mimic3-ko_KO-kss_low",
+        "language_name": "Korean",
+        "description": "Korean VITS Mimic3 KSS Studio ONNX Model (~45MB)",
+    },
+    "en": {
+        "name": "vits-piper-en_US-lessac-medium",
+        "url": "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-piper-en_US-lessac-medium.tar.bz2",
+        "repo": "csukuangfj/vits-piper-en_US-lessac-medium",
+        "language_name": "English",
+        "description": "English VITS Piper Lessac Medium ONNX Model (~55MB)",
+    },
+    "ja": {
+        "name": "vits-piper-ja_JP-hina-medium",
+        "url": "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-piper-ja_JP-hina-medium.tar.bz2",
+        "repo": "csukuangfj/vits-piper-ja_JP-hina-medium",
+        "language_name": "Japanese",
+        "description": "Japanese VITS Piper Hina Medium ONNX Model (~50MB)",
+    },
+    "zh": {
+        "name": "vits-zh-aishell3",
+        "url": "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-zh-aishell3.tar.bz2",
+        "repo": "csukuangfj/vits-zh-aishell3",
+        "language_name": "Chinese (Mandarin)",
+        "description": "Chinese VITS AISHELL-3 Multi-Speaker ONNX Model (~65MB)",
+    },
+    "hi": {
+        "name": "vits-piper-hi_IN-swara-medium",
+        "url": "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-piper-hi_IN-swara-medium.tar.bz2",
+        "repo": "csukuangfj/vits-piper-hi_IN-swara-medium",
+        "language_name": "Hindi",
+        "description": "Hindi VITS Piper Swara Medium ONNX Model (~55MB)",
+    },
+    "ru": {
+        "name": "vits-piper-ru_RU-dmitri-medium",
+        "url": "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-piper-ru_RU-dmitri-medium.tar.bz2",
+        "repo": "csukuangfj/vits-piper-ru_RU-dmitri-medium",
+        "language_name": "Russian",
+        "description": "Russian VITS Piper Dmitri Medium ONNX Model (~55MB)",
+    },
+    "es": {
+        "name": "vits-piper-es_ES-davefx-medium",
+        "url": "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-piper-es_ES-davefx-medium.tar.bz2",
+        "repo": "csukuangfj/vits-piper-es_ES-davefx-medium",
+        "language_name": "Spanish",
+        "description": "Spanish VITS Piper Davefx Medium ONNX Model (~50MB)",
+    },
+    "fr": {
+        "name": "vits-piper-fr_FR-siwis-medium",
+        "url": "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-piper-fr_FR-siwis-medium.tar.bz2",
+        "repo": "csukuangfj/vits-piper-fr_FR-siwis-medium",
+        "language_name": "French",
+        "description": "French VITS Piper Siwis Medium ONNX Model (~50MB)",
+    },
+    "de": {
+        "name": "vits-piper-de_DE-thorsten-medium",
+        "url": "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-piper-de_DE-thorsten-medium.tar.bz2",
+        "repo": "csukuangfj/vits-piper-de_DE-thorsten-medium",
+        "language_name": "German",
+        "description": "German VITS Piper Thorsten Medium ONNX Model (~50MB)",
+    },
+}
+
 def get_install_paths():
-    home = Path.home()
-    bin_dir = home / ".local" / "bin"
-    cache_dir = home / ".cache" / "termux-tts" / "models"
+    home = Path.home().resolve()
+    bin_dir = (home / ".local" / "bin").resolve()
+    cache_dir = (home / ".cache" / "termux-tts" / "models").resolve()
+    models_tts_dir = (home / "models" / "tts").resolve()
     bin_dir.mkdir(parents=True, exist_ok=True)
     cache_dir.mkdir(parents=True, exist_ok=True)
+    models_tts_dir.mkdir(parents=True, exist_ok=True)
     return bin_dir, cache_dir
 
 def download_with_progress(url: str, dest_path: Path, label: str):
     try:
         from . import __version__
     except Exception:
-        __version__ = "1.4.3"
+        __version__ = "1.4.4"
 
     print(f"  [DOWNLOADING] {label}...")
     req = urllib.request.Request(url, headers={"User-Agent": f"termux-tts-installer/{__version__} (Android; ARM64)"})
@@ -169,9 +234,68 @@ def install_vits_model(tier: str = "high", force: bool = False) -> Path:
     print(f"  [SUCCESS] Model installed at: {model_dir}")
     return model_dir
 
-def run_installation(tier: str = "high", force: bool = False, play: bool = True):
+def provision_neural_model_archive(language: str, force: bool = False) -> Path:
+    """
+    On-Demand Auto-Provisioner for official neural speech models.
+    Downloads official pre-compiled model archives (.tar.bz2) and extracts directly into cache.
+    """
+    from .script_classifier import normalize_language_code
+    lang = normalize_language_code(language)
+    if lang not in OFFICIAL_NEURAL_MODELS:
+        from .exceptions import TTSModelLoadError
+        raise TTSModelLoadError(
+            f"[FAIL-FAST] No official automated model package registered for language '{lang}'.\n"
+            f"Available automated packages: {list(OFFICIAL_NEURAL_MODELS.keys())}"
+        )
+
+    cfg = OFFICIAL_NEURAL_MODELS[lang]
+    _, cache_dir = get_install_paths()
+    target_dir = cache_dir / cfg["name"]
+    unified_tts_dir = Path.home() / "models" / "tts"
+
+    if target_dir.is_dir() and not force:
+        onnx_files = list(target_dir.glob("*.onnx"))
+        if onnx_files and (target_dir / "tokens.txt").exists() and (target_dir / "espeak-ng-data").exists():
+            # Ensure symlink in ~/models/tts/
+            try:
+                link_dest = unified_tts_dir / cfg["name"]
+                if not link_dest.exists() and not link_dest.is_symlink():
+                    link_dest.symlink_to(target_dir)
+            except OSError:
+                pass
+            return target_dir
+
+    print(f"\n[termux-tts runtime] Auto-provisioning {cfg['description']}...")
+    archive_path = cache_dir / f"{cfg['name']}.tar.bz2"
+
+    try:
+        download_with_progress(cfg["url"], archive_path, cfg["name"])
+        print(f"  [EXTRACTING] Unpacking model archive into {cache_dir}...")
+        with tarfile.open(archive_path, "r:bz2") as tar:
+            tar.extractall(path=cache_dir)
+        archive_path.unlink(missing_ok=True)
+
+        # Link to ~/models/tts/ as unified SSOT
+        try:
+            link_dest = unified_tts_dir / cfg["name"]
+            if not link_dest.exists() and not link_dest.is_symlink():
+                link_dest.symlink_to(target_dir)
+        except OSError:
+            pass
+
+        print(f"  [SUCCESS] Model provisioned: {target_dir}")
+        return target_dir
+    except Exception as err:
+        if archive_path.exists():
+            archive_path.unlink(missing_ok=True)
+        from .exceptions import TTSModelLoadError
+        raise TTSModelLoadError(
+            f"[FAIL-FAST] Failed to auto-provision neural model '{cfg['name']}': {err}"
+        ) from err
+
+def run_installation(tier: str = "high", models: str = "default", force: bool = False, play: bool = True):
     print("=" * 70)
-    print("   TERMUX-TTS VULKAN GPU AUTOMATED PROVISIONER (1-CLICK SETUP)")
+    print("   TERMUX-TTS AUTOMATED PROVISIONER (BATTERIES-INCLUDED RUNTIME)")
     print("=" * 70)
     
     # 1. Install pre-compiled Vulkan binary
@@ -179,6 +303,24 @@ def run_installation(tier: str = "high", force: bool = False, play: bool = True)
     
     # 2. Install VITS model
     model_path = install_vits_model(tier=tier, force=force)
+
+    # 2b. Install Multilingual VITS ONNX Models
+    # Default is ONLY Korean (ko) & English (en) for ultra-lightweight initial setup!
+    raw_models = models.strip().lower() if models else "default"
+    if raw_models in ("default", "base", "core"):
+        langs_to_install = ["ko", "en"]
+    elif raw_models == "all":
+        langs_to_install = list(OFFICIAL_NEURAL_MODELS.keys())
+    else:
+        # User specified specific language(s) like "hi" or "ja,zh"
+        langs_to_install = [l.strip() for l in raw_models.split(",") if l.strip()]
+
+    print(f"\n[MULTILINGUAL] Provisioning Neural Speech Models: {langs_to_install}...")
+    for lang in langs_to_install:
+        try:
+            provision_neural_model_archive(lang, force=force)
+        except Exception as e:
+            print(f"  [-] Multilingual {lang} provisioning note: {e}")
     
     # 3. Environment check
     vulkan_lib = Path("/system/lib64/libvulkan.so")

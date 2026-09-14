@@ -12,6 +12,9 @@ from .engine_dsp import ParametricDSPEngine, DSPResult, QUALITY_PRESETS, DSPSynt
 from .engine_sherpa import SherpaNeuralEngine, SherpaResult
 from .engine_vulkan import VulkanNeuralEngine, VulkanResult
 from .engine_expressive import ExpressiveEngine, ExpressiveResult
+from .engine_multilingual import MultilingualNeuralEngine, MultilingualResult
+from .engine_sherpa_capi import SherpaResidentManager, SherpaCapiSession
+from .script_classifier import MultilingualTokenizer, ScriptRegistry, LanguageChunk
 from .installer import run_installation
 from .tokenizer import PhoneticTokenizer, EXPRESSIVE_TAGS
 from .g2p_korean import KoreanG2PEngine, korean_text_to_phonemes
@@ -29,7 +32,7 @@ from .exceptions import (
 ONNXNeuralEngine = SherpaNeuralEngine
 ONNXResult = SherpaResult
 
-__version__ = "1.4.3"
+__version__ = "1.4.4"
 __all__ = [
     "TTSEngine",
     "load",
@@ -45,6 +48,13 @@ __all__ = [
     "VulkanResult",
     "ExpressiveEngine",
     "ExpressiveResult",
+    "MultilingualNeuralEngine",
+    "MultilingualResult",
+    "SherpaResidentManager",
+    "SherpaCapiSession",
+    "MultilingualTokenizer",
+    "ScriptRegistry",
+    "LanguageChunk",
     "run_installation",
     "ONNXNeuralEngine",
     "ONNXResult",
