@@ -96,7 +96,7 @@ class SherpaNeuralEngine:
         )
 
     def _resolve_model_assets(self, model_path: Optional[str]) -> Dict[str, str]:
-        """Locate model onnx, tokens.txt, and espeak-ng-data directory or fail-fast."""
+        """Locate model onnx and auxiliary metadata assets or fail-fast."""
         search_dirs: List[Path] = []
         if model_path:
             p = Path(model_path).expanduser().resolve()
@@ -111,13 +111,98 @@ class SherpaNeuralEngine:
         else:
             from .hardware import get_unified_model_search_dirs
             search_dirs = list(get_unified_model_search_dirs("tts"))
+            search_dirs.extend([Path.home(), Path("/data/data/com.termux/files/home")])
+            search_dirs.extend(self.STANDARD_MODEL_DIRS)
 
-        # 1. Find directory containing .onnx model, tokens.txt, and espeak-ng-data
+        # 1. Kokoro Model Search
+        if self.model_type == "kokoro":
+            for sdir in search_dirs:
+                if not sdir.exists():
+                    continue
+                candidates = [sdir] + [sdir / name for name in ["kokoro-int8-en-v0_19", "kokoro-en-v0_19", "kokoro-int8-multi-lang-v1_1", "kokoro-multi-lang-v1_0", "kokoro"]]
+                for cand in candidates:
+                    if not cand.is_dir():
+                        continue
+                    voices = cand / "voices.bin"
+                    tokens = cand / "tokens.txt"
+                    data_dir = cand / "espeak-ng-data"
+                    onnx_files = list(cand.glob("*.onnx"))
+                    if onnx_files and voices.exists() and tokens.exists():
+                        return {
+                            "model": str(onnx_files[0]),
+                            "voices": str(voices),
+                            "tokens": str(tokens),
+                            "data_dir": str(data_dir) if data_dir.exists() else "",
+                            "model_name": cand.name,
+                        }
+            raise TTSModelLoadError(
+                f"[FAIL-FAST] Kokoro model assets (model.onnx, voices.bin, tokens.txt) not found.\n"
+                f"  Run 'termux-tts install --models kokoro' to download and provision Kokoro-82M."
+            )
+
+        # 2. Supertonic Model Search
+        if self.model_type == "supertonic":
+            for sdir in search_dirs:
+                if not sdir.exists():
+                    continue
+                candidates = [sdir] + [sdir / name for name in ["sherpa-onnx-supertonic-3-tts-int8-2026-05-11", "sherpa-onnx-supertonic-tts-int8-2026-03-06", "supertonic"]]
+                for cand in candidates:
+                    if not cand.is_dir():
+                        continue
+                    dp = cand / "duration_predictor.int8.onnx" if (cand / "duration_predictor.int8.onnx").exists() else cand / "duration_predictor.onnx"
+                    te = cand / "text_encoder.int8.onnx" if (cand / "text_encoder.int8.onnx").exists() else cand / "text_encoder.onnx"
+                    ve = cand / "vector_estimator.int8.onnx" if (cand / "vector_estimator.int8.onnx").exists() else cand / "vector_estimator.onnx"
+                    voc = cand / "vocoder.int8.onnx" if (cand / "vocoder.int8.onnx").exists() else cand / "vocoder.onnx"
+                    tts_json = cand / "tts.json"
+                    ui = cand / "unicode_indexer.bin"
+                    vs = cand / "voice_styles.bin"
+                    if not vs.exists():
+                        vs = cand / "voice.bin"
+                    if dp.exists() and te.exists() and ve.exists() and voc.exists() and tts_json.exists() and ui.exists() and vs.exists():
+                        return {
+                            "duration_predictor": str(dp),
+                            "text_encoder": str(te),
+                            "vector_estimator": str(ve),
+                            "vocoder": str(voc),
+                            "tts_json": str(tts_json),
+                            "unicode_indexer": str(ui),
+                            "voice_style": str(vs),
+                            "model_name": cand.name,
+                        }
+            raise TTSModelLoadError(
+                f"[FAIL-FAST] Supertonic model assets (duration_predictor, text_encoder, vocoder, tts.json) not found.\n"
+                f"  Run 'termux-tts install --models supertonic' to download and provision Supertonic."
+            )
+
+        # 3. MeloTTS Model Search
+        if self.model_type == "melo":
+            for sdir in search_dirs:
+                if not sdir.exists():
+                    continue
+                candidates = [sdir] + [sdir / name for name in ["vits-melo-tts-zh_en", "melo-tts", "melotts"]]
+                for cand in candidates:
+                    if not cand.is_dir():
+                        continue
+                    tokens = cand / "tokens.txt"
+                    lexicon = cand / "lexicon.txt"
+                    onnx_files = list(cand.glob("*.onnx"))
+                    if onnx_files and tokens.exists() and lexicon.exists():
+                        return {
+                            "model": str(onnx_files[0]),
+                            "tokens": str(tokens),
+                            "lexicon": str(lexicon),
+                            "model_name": cand.name,
+                        }
+            raise TTSModelLoadError(
+                f"[FAIL-FAST] MeloTTS model assets (model.onnx, tokens.txt, lexicon.txt) not found.\n"
+                f"  Run 'termux-tts install --models melo' to download and provision MeloTTS."
+            )
+
+        # 4. Standard VITS ONNX model search
         for sdir in search_dirs:
             if not sdir.exists():
                 continue
 
-            # Look for VITS ONNX model
             onnx_files = list(sdir.glob("*.onnx"))
             if not onnx_files and (sdir / "vits-mimic3-ko_KO-kss_low").exists():
                 sdir = sdir / "vits-mimic3-ko_KO-kss_low"
@@ -127,19 +212,26 @@ class SherpaNeuralEngine:
                 onnx_model = str(onnx_files[0])
                 tokens_file = sdir / "tokens.txt"
                 espeak_dir = sdir / "espeak-ng-data"
+                lexicon_file = sdir / "lexicon.txt"
 
                 if not tokens_file.exists():
                     tokens_file = sdir.parent / "tokens.txt"
                 if not espeak_dir.exists():
                     espeak_dir = sdir.parent / "espeak-ng-data"
+                if not lexicon_file.exists():
+                    lexicon_file = sdir.parent / "lexicon.txt"
 
-                if tokens_file.exists() and espeak_dir.exists():
-                    return {
+                if tokens_file.exists() and (espeak_dir.exists() or lexicon_file.exists()):
+                    res = {
                         "model": str(onnx_model),
                         "tokens": str(tokens_file),
-                        "data_dir": str(espeak_dir),
                         "model_name": Path(onnx_model).stem,
                     }
+                    if espeak_dir.exists():
+                        res["data_dir"] = str(espeak_dir)
+                    if lexicon_file.exists():
+                        res["lexicon"] = str(lexicon_file)
+                    return res
 
         raise TTSModelLoadError(
             f"[FAIL-FAST] Required TTS model assets (onnx model, tokens.txt, espeak-ng-data) "
@@ -173,18 +265,65 @@ class SherpaNeuralEngine:
             temp_wav = tmp_file.name
 
         try:
-            cmd = [
-                self.binary,
-                f"--vits-model={self.model_assets['model']}",
-                f"--vits-tokens={self.model_assets['tokens']}",
-                f"--vits-data-dir={self.model_assets['data_dir']}",
-                f"--output-filename={temp_wav}",
-                f"--num-threads={self.threads}",
-                f"--speed={speed:.2f}",
-                normalized_text,
-            ]
+            if self.model_type == "kokoro":
+                cmd = [
+                    self.binary,
+                    f"--kokoro-model={self.model_assets['model']}",
+                    f"--kokoro-voices={self.model_assets['voices']}",
+                    f"--kokoro-tokens={self.model_assets['tokens']}",
+                    f"--output-filename={temp_wav}",
+                    f"--num-threads={self.threads}",
+                    f"--speed={speed:.2f}",
+                ]
+                if self.model_assets.get("data_dir"):
+                    cmd.append(f"--kokoro-data-dir={self.model_assets['data_dir']}")
+                cmd.append(normalized_text)
+            elif self.model_type == "supertonic":
+                cmd = [
+                    self.binary,
+                    f"--supertonic-duration-predictor={self.model_assets['duration_predictor']}",
+                    f"--supertonic-text-encoder={self.model_assets['text_encoder']}",
+                    f"--supertonic-vector-estimator={self.model_assets['vector_estimator']}",
+                    f"--supertonic-vocoder={self.model_assets['vocoder']}",
+                    f"--supertonic-tts-json={self.model_assets['tts_json']}",
+                    f"--supertonic-unicode-indexer={self.model_assets['unicode_indexer']}",
+                    f"--supertonic-voice-style={self.model_assets['voice_style']}",
+                    f"--lang={self.language if self.language not in ('auto', '') else 'ko'}",
+                    f"--output-filename={temp_wav}",
+                    f"--num-threads={self.threads}",
+                    f"--speed={speed:.2f}",
+                    normalized_text,
+                ]
+            elif self.model_type == "melo":
+                cmd = [
+                    self.binary,
+                    f"--vits-model={self.model_assets['model']}",
+                    f"--vits-tokens={self.model_assets['tokens']}",
+                    f"--vits-lexicon={self.model_assets['lexicon']}",
+                    f"--output-filename={temp_wav}",
+                    f"--num-threads={self.threads}",
+                    f"--speed={speed:.2f}",
+                    normalized_text,
+                ]
+            else:
+                cmd = [
+                    self.binary,
+                    f"--vits-model={self.model_assets['model']}",
+                    f"--vits-tokens={self.model_assets['tokens']}",
+                    f"--output-filename={temp_wav}",
+                    f"--num-threads={self.threads}",
+                    f"--speed={speed:.2f}",
+                ]
+                if self.model_assets.get("data_dir"):
+                    cmd.append(f"--vits-data-dir={self.model_assets['data_dir']}")
+                elif self.model_assets.get("lexicon"):
+                    cmd.append(f"--vits-lexicon={self.model_assets['lexicon']}")
+                cmd.append(normalized_text)
 
             env = os.environ.copy()
+            env["PYTHONIOENCODING"] = "utf-8"
+            env["LANG"] = "en_US.UTF-8"
+            env["LC_ALL"] = "en_US.UTF-8"
             # Ensure proper thread affinity and libraries
             if os.path.exists("/system/lib64/libvulkan.so"):
                 current_ld = env.get("LD_LIBRARY_PATH", "")

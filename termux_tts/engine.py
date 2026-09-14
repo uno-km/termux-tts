@@ -18,7 +18,6 @@ from typing import Optional, Union, Dict, Any
 
 from .exceptions import TTSInferenceError, TTSModelLoadError, VulkanInitializationError
 from .engine_native import NativeAndroidEngine, NativeResult
-from .engine_dsp import ParametricDSPEngine, DSPResult, QUALITY_PRESETS
 from .engine_sherpa import SherpaNeuralEngine, SherpaResult
 from .engine_vulkan import VulkanNeuralEngine, VulkanResult
 from .engine_expressive import ExpressiveEngine, ExpressiveResult
@@ -32,6 +31,14 @@ from .hardware import (
 )
 
 logger = logging.getLogger("termux_tts.engine")
+
+
+QUALITY_PRESETS = {
+    "fast": {"sample_rate": 16000, "description": "16kHz Low Latency"},
+    "balanced": {"sample_rate": 22050, "description": "22.05kHz Standard Audio"},
+    "expressive": {"sample_rate": 24000, "description": "24kHz Expressive High Fidelity"},
+    "ultra": {"sample_rate": 44100, "description": "44.1kHz Studio Master"},
+}
 
 
 class TTSEngine:
@@ -86,6 +93,18 @@ class TTSEngine:
         if norm_lang in ("hi", "ru", "ja", "zh", "es", "fr", "de", "ar"):
             return self._get_multilingual_engine()
 
+        # Explicit Vulkan GPU MeloTTS Tier (Plan 1 NCNN Sliced / Plan 2 MNN Vulkan)
+        if t in ("melo", "melo_vulkan", "melo_ncnn", "melo_mnn") and (self.requested_device in ("vulkan", "gpu") or self.device == "vulkan"):
+            return VulkanNeuralEngine(
+                model_path=self.model_path,
+                language=self.language,
+                device=self.requested_device,
+                threads=self.threads,
+                sample_rate=self.sample_rate or 44100,
+                model_tier=self.model_tier,
+                model_type=t,
+            )
+
         # Explicit Vulkan GPU Tier (Vulkan NCNN engine targets English Lessac)
         if (t in ("vulkan", "gpu", "ncnn") or (self.requested_device in ("vulkan", "gpu") and t in ("neural", "vits", "auto"))) and norm_lang in ("en", "auto"):
             try:
@@ -96,6 +115,7 @@ class TTSEngine:
                     threads=self.threads,
                     sample_rate=self.sample_rate or 22050,
                     model_tier=self.model_tier,
+                    model_type="vits",
                 )
             except (VulkanInitializationError, TTSModelLoadError) as err:
                 if t in ("vulkan", "gpu", "ncnn") or self.requested_device in ("vulkan", "gpu"):
@@ -113,6 +133,17 @@ class TTSEngine:
                 model_type="vits",
             )
 
+        # BigTech 3rd-Party Neural Speech Engines (StyleTTS2/Kokoro, MeloTTS, Supertonic)
+        elif t in ("kokoro", "melo", "supertonic"):
+            return SherpaNeuralEngine(
+                model_path=self.model_path,
+                language=self.language,
+                device=self.requested_device,
+                threads=self.threads,
+                sample_rate=self.sample_rate or 22050,
+                model_type=t,
+            )
+
         # Explicit Tier 4: Expressive (Fail-Fast)
         elif t in ("expressive", "chat", "conversational"):
             return ExpressiveEngine(
@@ -123,16 +154,6 @@ class TTSEngine:
                 sample_rate=self.sample_rate or 22050,
             )
 
-        # Explicit Tier 1: Synth / DSP
-        elif t in ("synth", "dsp", "formant"):
-            return ParametricDSPEngine(
-                model_path=self.model_path,
-                language=self.language,
-                preset=self.preset,
-                device=self.requested_device,
-                sample_rate=self.sample_rate,
-            )
-
         # Explicit Multilingual / Code-Switching Tier
         elif t in ("multilingual", "codeswitch", "hybrid"):
             return self._get_multilingual_engine()
@@ -141,7 +162,7 @@ class TTSEngine:
         elif t == "native":
             return self.native_engine
 
-        # Auto Mode
+        # Auto Mode (Zero-Silent-Fallback)
         elif t == "auto":
             # 1. Check if SherpaNeuralEngine assets exist
             try:
@@ -159,18 +180,17 @@ class TTSEngine:
             if self.native_engine.binary:
                 return self.native_engine
 
-            # 3. Fallback to zero-dependency DSP Synth
-            return ParametricDSPEngine(
-                model_path=self.model_path,
-                language=self.language,
-                preset=self.preset,
-                device=self.requested_device,
-                sample_rate=self.sample_rate,
+            # 3. Fail-Fast: No silent robotic fallback
+            raise TTSModelLoadError(
+                "[FAIL-FAST] No TTS voice engine available. Neural speech model is not installed, "
+                "and native Android TTS engine is unavailable.\n"
+                "  To install official neural models automatically, run:\n"
+                "      termux-tts install\n"
             )
         else:
             raise TTSInferenceError(
                 f"[FAIL-FAST] Unknown engine_type '{self.requested_engine_type}'. "
-                f"Available tiers: ['auto', 'synth', 'native', 'neural', 'expressive']"
+                f"Available tiers: ['auto', 'native', 'neural', 'expressive', 'multilingual', 'kokoro', 'melo', 'supertonic']"
             )
 
     @property
@@ -207,7 +227,8 @@ class TTSEngine:
         speed: float = 1.0,
         preset: Optional[str] = None,
         language: Optional[str] = None,
-    ) -> Union[DSPResult, SherpaResult, ExpressiveResult, NativeResult, MultilingualResult]:
+        mode: str = "unified",
+    ) -> Union[SherpaResult, ExpressiveResult, NativeResult, MultilingualResult]:
         """Synthesize text into speech audio buffer / WAV file with Zero-Config intelligent routing."""
         if self._is_closed:
             raise TTSInferenceError("Cannot synthesize: Engine session is closed.")
@@ -219,24 +240,21 @@ class TTSEngine:
         from .script_classifier import normalize_language_code
         target_lang = normalize_language_code(language or self.language)
 
-        # 1. If user explicitly pinned to lightweight DSP (0MB), respect choice
-        if self.requested_engine_type in ("dsp", "synth", "formant") or self.device == "dsp":
-            return self.synth_engine.synthesize(clean_text, output=output, speed=speed, preset=preset)
-
-        # 2. If user explicitly pinned to OS Native voice, speak directly
+        # 1. If user explicitly pinned to OS Native voice, speak directly
         if self.requested_engine_type == "native":
             return self.native_engine.speak(clean_text)
 
-        # 3. Multilingual auto-detection:
+        # 2. Multilingual auto-detection:
         # Route to MultilingualNeuralEngine if multiple languages are present in text
         # or if caller specifically requested multilingual / hybrid engine.
         detected_langs = MultilingualTokenizer.detect_languages(clean_text)
         is_mixed_text = len(detected_langs) > 1
 
         should_route_multilingual = (
-            (self.requested_engine_type in ("auto", "multilingual", "codeswitch", "hybrid")) or
-            (is_mixed_text and self.requested_engine_type not in ("dsp", "synth", "native") and self.device != "dsp" and (self._multilingual_engine is not None or not isinstance(self.synth_engine, ParametricDSPEngine))) or
-            (target_lang in ("hi", "ru", "ja", "zh", "es", "fr", "de", "ar") and self.requested_engine_type not in ("dsp", "synth", "native"))
+            (self.requested_engine_type in ("multilingual", "codeswitch", "hybrid")) or
+            (self.requested_engine_type == "auto" and (is_mixed_text or self._multilingual_engine is not None)) or
+            (is_mixed_text and self.requested_engine_type != "native") or
+            (target_lang in ("hi", "ru", "ja", "zh", "es", "fr", "de", "ar") and self.requested_engine_type != "native")
         )
 
         if should_route_multilingual:
@@ -248,6 +266,7 @@ class TTSEngine:
                 clean_text,
                 output=output,
                 speed=speed,
+                mode=mode,
                 **kwargs
             )
 

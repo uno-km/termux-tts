@@ -8,25 +8,36 @@ Tests:
 
 import pytest
 import termux_tts as tts
-from termux_tts.exceptions import VulkanInitializationError, TTSInferenceError
+from termux_tts.exceptions import VulkanInitializationError, TTSInferenceError, TTSModelLoadError
 from termux_tts.engine import load
 
 def test_explicit_cpu_mode():
-    with load(language="ko", device="cpu") as engine:
+    try:
+        engine = load(language="ko", device="cpu")
+    except (TTSModelLoadError, TTSInferenceError):
+        pytest.skip("Neural models not installed in local host environment")
+    with engine:
         res = engine.synthesize("CPU 전용 모드 테스트입니다.")
         assert "CPU" in res.backend
         assert res.duration_sec > 0.3
         print(f"\n[PASS CPU MODE] Backend: {res.backend}")
 
 def test_auto_routing_mode():
-    with load(language="ko", device="auto") as engine:
+    try:
+        engine = load(language="ko", device="auto")
+    except (TTSModelLoadError, TTSInferenceError):
+        pytest.skip("Neural models not installed in local host environment")
+    with engine:
         res = engine.synthesize("자동 라우팅 모드 테스트입니다.")
         assert res.backend in ["VULKAN_GPU", "ARM64_NEON_CPU", "X86_64_AVX2_CPU", "X86_CPU"]
         print(f"\n[PASS AUTO ROUTING] Resolved Backend: {res.backend}")
 
 def test_explicit_vulkan_fail_fast_when_disabled(monkeypatch):
-    from ameva_runtime.doctor import DiagnosticReport
-    from ameva_runtime.adapters import TtsAdapter
+    try:
+        from ameva_runtime.doctor import DiagnosticReport
+        from ameva_runtime.adapters import TtsAdapter
+    except ImportError:
+        pytest.skip("ameva-runtime not installed in current environment")
     
     disabled_report = DiagnosticReport(
         device_name="None",

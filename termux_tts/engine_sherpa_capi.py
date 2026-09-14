@@ -252,6 +252,8 @@ class SherpaCapiSession:
         threads: int = 4,
         sample_rate: int = 22050,
         provider: str = "cpu",
+        model_type: str = "vits",
+        voices_path: Optional[str] = None,
     ):
         self.language = language.lower()
         self.threads = threads
@@ -260,18 +262,30 @@ class SherpaCapiSession:
         self.model_path = model_path
         self.tokens_path = tokens_path
         self.data_dir = data_dir
+        self.model_type = model_type.lower()
         self._is_closed = False
 
         self._cdll = get_sherpa_capi_cdll()
 
         # Build configuration struct
         cfg = SherpaOnnxOfflineTtsConfig()
-        cfg.model.vits.model = model_path.encode("utf-8")
-        cfg.model.vits.tokens = tokens_path.encode("utf-8")
-        cfg.model.vits.data_dir = data_dir.encode("utf-8")
-        cfg.model.vits.noise_scale = 0.667
-        cfg.model.vits.noise_scale_w = 0.8
-        cfg.model.vits.length_scale = 1.0
+        if self.model_type == "kokoro":
+            cfg.model.kokoro.model = model_path.encode("utf-8")
+            if voices_path:
+                cfg.model.kokoro.voices = voices_path.encode("utf-8")
+            cfg.model.kokoro.tokens = tokens_path.encode("utf-8")
+            cfg.model.kokoro.data_dir = data_dir.encode("utf-8")
+            cfg.model.kokoro.length_scale = 1.0
+        elif self.model_type == "supertonic":
+            cfg.model.supertonic.duration_predictor = model_path.encode("utf-8")
+            cfg.model.supertonic.tts_json = tokens_path.encode("utf-8")
+        else:  # vits / melo
+            cfg.model.vits.model = model_path.encode("utf-8")
+            cfg.model.vits.tokens = tokens_path.encode("utf-8")
+            cfg.model.vits.data_dir = data_dir.encode("utf-8")
+            cfg.model.vits.noise_scale = 0.667
+            cfg.model.vits.noise_scale_w = 0.8
+            cfg.model.vits.length_scale = 1.0
 
         cfg.model.num_threads = threads
         cfg.model.debug = 0
@@ -398,6 +412,9 @@ class SherpaResidentManager:
             "es": ["vits-piper-es_ES-davefx-medium"],
             "fr": ["vits-piper-fr_FR-siwis-medium"],
             "de": ["vits-piper-de_DE-thorsten-medium"],
+            "kokoro": ["kokoro-en-v0_19", "kokoro-82m", "kokoro-v0_19", "kokoro"],
+            "melo": ["vits-melo-tts-zh_en", "melo-tts", "melotts"],
+            "supertonic": ["supertonic-tts", "supertonic-3-tts", "supertonic"],
         }.get(lang, [f"vits-{lang}", f"vits-piper-{lang}"])
 
         for sdir in search_dirs:

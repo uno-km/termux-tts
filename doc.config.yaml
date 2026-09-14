@@ -8,8 +8,8 @@ name: "termux-tts"
 display_name: "Termux-TTS"
 package_name_pypi: "termux-tts"
 package_name_npm: "termux-tts"
-version: "v1.4.4"
-release_name: "Multilingual Neural Orchestrator & Zero-Config Ergonomics"
+version: "v1.5.0"
+release_name: "100% Native Vulkan Hardware GPU Pipeline & Zero-Silent-Fallback Architecture"
 license: "Apache-2.0"
 platform: "Android ARM64 / Qualcomm Adreno & ARM Mali Vulkan 1.3 / Linux"
 github_repo_url: "https://github.com/uno-km/termux-tts"
@@ -142,14 +142,13 @@ code_example_js: |
   main();
 
 benchmarks:
-  headers: ["Hardware Target", "SoC / GPU Architecture", "Synthesis Engine", "Audio Duration", "Compute Latency", "Real-Time Factor (RTF)", "Execution Status"]
+  headers: ["Hardware Target", "SoC / Physical GPU Architecture", "Vulkan Driver ABI", "Audio Duration", "Synthesis Latency", "Real-Time Factor (RTF)", "Execution Status"]
   rows:
-    - ["Galaxy S25", "Snapdragon 8 Elite / Adreno 830", "Vulkan GPU (high-fp16)", "6.70 s", "6.65 s", "0.993x", "Validated (Real-time)"]
-    - ["Galaxy S25", "Snapdragon 8 Elite / Adreno 830", "Vulkan GPU (medium)", "4.59 s", "1.21 s", "0.264x", "Validated (3.79x faster)"]
-    - ["Galaxy A35", "Exynos 1380 / ARM Mali-G68 MP5", "Vulkan GPU (medium)", "4.52 s", "5.18 s", "1.146x", "Validated (Stable)"]
-    - ["Galaxy A35", "Exynos 1380 / ARM Mali-G68 MP5", "Vulkan GPU (high-fp16)", "6.73 s", "34.33 s", "5.098x", "Validated (High Fidelity)"]
-    - ["Heterogeneous ARM64", "Cortex-A78 / A55 CPU Core", "Zero-Dep DSP Formant", "4.15 s", "0.054 s", "0.0130x", "Validated (Instant)"]
-    - ["Android Physical Speaker", "AudioTrack / OpenSL ES Bridge", "Android Native Service", "N/A", "0.012 s", "0.0020x", "Validated (Hardware Out)"]
+    - ["Galaxy S21", "Exynos 2100 / ARM Mali-G78 (0x9800000)", "Vulkan 1.1 (/system/lib64)", "4.25 s", "9.37 s", "2.2055x", "Validated (100% Native GPU)"]
+    - ["Galaxy S25", "Snapdragon 8 Elite / Adreno 830 (0x80320040)", "Vulkan 1.3 (/system/lib64)", "4.25 s", "16.21 s", "3.8145x", "Validated (100% Native GPU)"]
+    - ["Galaxy S22", "Snapdragon 8 Gen 1 / Adreno 730 (0x80267062)", "Vulkan 1.1 (/system/lib64)", "4.27 s", "38.09 s", "8.9159x", "Validated (100% Native GPU)"]
+    - ["Galaxy A35", "Exynos 1380 / ARM Mali-G68 MP5 (0x9801000)", "Vulkan 1.1 (/system/lib64)", "4.27 s", "51.91 s", "12.1505x", "Validated (100% Native GPU)"]
+    - ["Heterogeneous CPU", "Cortex-A78 / A55 CPU Core", "Sherpa NEON SIMD C++", "4.25 s", "1.85 s", "0.4350x", "Validated (CPU Reference)"]
 
 api_reference:
   - symbol: "termux_tts.load(engine='auto'|'vulkan'|'sherpa'|'dsp'|'native', model_tier='high'|'medium', preset='balanced')"

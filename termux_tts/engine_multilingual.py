@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import logging
 import os
+import re
 import shutil
 import subprocess
 import tempfile
@@ -284,10 +285,12 @@ class MultilingualNeuralEngine:
         output: Optional[str] = None,
         speed: float = 1.0,
         language: Optional[str] = None,
+        mode: str = "unified",
     ) -> MultilingualResult:
         """
-        Synthesizes speech with zero cross-linguistic phoneme distortion.
-        Supports automatic multi-script code-switching or forced language isolation.
+        Synthesizes speech with natural prosody and zero cross-speaker distortion.
+        Defaults to 'unified' single-pass mode (phonetic transliteration preserving prosody).
+        'stitch' mode retains explicit multi-model chunk concatenation when requested.
         """
         if self._is_closed:
             raise TTSInferenceError("Cannot synthesize: Multilingual session is closed.")
@@ -297,17 +300,50 @@ class MultilingualNeuralEngine:
             raise TTSInferenceError("Cannot synthesize empty text.")
 
         t0 = time.perf_counter()
+        target_sample_rate = self.sample_rate
 
-        # 1. Parse text into language-tagged chunks (respecting forced language if provided)
+        # -------------------------------------------------------------------
+        # Mode 1: Unified Single-Pass Pipeline (BigTech Architecture Standard)
+        # -------------------------------------------------------------------
+        has_korean = bool(re.search(r"[\uac00-\ud7a3]", clean_text))
+        has_latin = bool(re.search(r"[a-zA-Z]", clean_text))
+
+        if mode == "unified" and (language == "ko" or (language is None and has_korean)):
+            from .transliteration import transliterate_mixed_text
+            unified_text = transliterate_mixed_text(clean_text)
+            logger.info("[Multilingual] Unified single-pass execution: '%s' -> '%s'", clean_text, unified_text)
+
+            chunk_buf = self._synthesize_chunk_audio(unified_text, "ko", speed=speed)
+            elapsed_ms = (time.perf_counter() - t0) * 1000.0
+            dur_sec = chunk_buf.duration_seconds
+            rtf = (elapsed_ms / 1000.0) / max(0.001, dur_sec)
+
+            if output:
+                chunk_buf.save(output)
+
+            dummy_chunk = LanguageChunk(text=clean_text, language="ko", pause_after=0.0)
+            return MultilingualResult(
+                text=clean_text,
+                audio_buffer=chunk_buf,
+                sample_rate=target_sample_rate,
+                duration_sec=dur_sec,
+                elapsed_ms=elapsed_ms,
+                rtf=rtf,
+                chunks=[dummy_chunk],
+                languages_detected=["ko", "en"] if has_latin else ["ko"],
+                backend="UNIFIED_SINGLE_PASS_NEURAL",
+            )
+
+        # -------------------------------------------------------------------
+        # Mode 2: Multi-Script Chunk Concatenation (Explicit Stitch Mode)
+        # -------------------------------------------------------------------
         chunks = self.tokenizer.tokenize(clean_text, force_language=language)
         if not chunks:
             raise TTSInferenceError("Tokenization yielded no synthesizable segments.")
 
         detected_langs = list(dict.fromkeys(c.language for c in chunks))
 
-        # 2. Multi-chunk synthesis & seamless concatenation
         assembled_samples: List[np.ndarray] = []
-        target_sample_rate = self.sample_rate
 
         for i, chunk in enumerate(chunks):
             chunk_buf = self._synthesize_chunk_audio(chunk.text, chunk.language, speed=speed)
@@ -323,7 +359,6 @@ class MultilingualNeuralEngine:
                 silence_gap = np.zeros(pause_len, dtype=np.float32)
                 assembled_samples.append(silence_gap)
 
-        # 3. Concatenate and build final AudioBuffer
         if assembled_samples:
             final_samples = np.concatenate(assembled_samples)
         else:

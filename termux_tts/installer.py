@@ -14,7 +14,7 @@ def get_candidate_vulkan_binary_urls():
     try:
         from . import __version__
     except Exception:
-        __version__ = "1.4.4"
+        __version__ = "1.5.0"
 
     urls = []
     custom_tag = os.environ.get("TERMUX_TTS_RELEASE_TAG", "").strip()
@@ -126,6 +126,27 @@ OFFICIAL_NEURAL_MODELS = {
         "repo": "csukuangfj/vits-piper-de_DE-thorsten-medium",
         "language_name": "German",
         "description": "German VITS Piper Thorsten Medium ONNX Model (~50MB)",
+    },
+    "kokoro": {
+        "name": "kokoro-int8-en-v0_19",
+        "url": "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/kokoro-int8-en-v0_19.tar.bz2",
+        "repo": "csukuangfj/kokoro-int8-en-v0_19",
+        "language_name": "Kokoro-82M Studio High Quality (INT8)",
+        "description": "Kokoro-82M StyleTTS2 Multilingual Studio Grade Model (~103MB)",
+    },
+    "melo": {
+        "name": "vits-melo-tts-zh_en",
+        "url": "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-melo-tts-zh_en.tar.bz2",
+        "repo": "csukuangfj/vits-melo-tts-zh_en",
+        "language_name": "MeloTTS Universal Bilingual",
+        "description": "MeloTTS Universal VITS Bilingual Model (~150MB)",
+    },
+    "supertonic": {
+        "name": "sherpa-onnx-supertonic-3-tts-int8-2026-05-11",
+        "url": "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/sherpa-onnx-supertonic-3-tts-int8-2026-05-11.tar.bz2",
+        "repo": "csukuangfj/sherpa-onnx-supertonic-3-tts-int8",
+        "language_name": "Supertonic 3 On-Device Multilingual (INT8)",
+        "description": "Supertonic 3 Ultra-Fast 31-Language Model (~128MB)",
     },
 }
 

@@ -8,7 +8,6 @@ termux-tts: Production-Grade 4-Tier TTS Framework for Android Termux.
 
 from .engine import TTSEngine, load, doctor
 from .engine_native import NativeAndroidEngine, NativeResult
-from .engine_dsp import ParametricDSPEngine, DSPResult, QUALITY_PRESETS, DSPSynthesizer
 from .engine_sherpa import SherpaNeuralEngine, SherpaResult
 from .engine_vulkan import VulkanNeuralEngine, VulkanResult
 from .engine_expressive import ExpressiveEngine, ExpressiveResult
@@ -32,14 +31,11 @@ from .exceptions import (
 ONNXNeuralEngine = SherpaNeuralEngine
 ONNXResult = SherpaResult
 
-__version__ = "1.4.4"
+__version__ = "1.5.0"
 __all__ = [
     "TTSEngine",
     "load",
     "doctor",
-    "ParametricDSPEngine",
-    "DSPSynthesizer",
-    "DSPResult",
     "NativeAndroidEngine",
     "NativeResult",
     "SherpaNeuralEngine",

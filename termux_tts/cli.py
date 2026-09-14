@@ -31,8 +31,8 @@ def main():
     synth_parser.add_argument("-l", "--lang", default="auto", help="Language code (auto=Multi-language auto switch, ko/kor=Korean only, en/eng=English only, ja/jpn=Japanese only)")
     synth_parser.add_argument(
         "-e", "--engine", default="auto",
-        choices=["auto", "vulkan", "ncnn", "gpu", "synth", "dsp", "native", "neural", "onnx", "expressive", "multilingual", "hybrid"],
-        help="Synthesis engine tier (auto=Smart Routing, vulkan=GPU NCNN, synth=0MB DSP, native=Android voice, neural=VITS C++, expressive=emotional, multilingual=Cross-language)"
+        choices=["auto", "vulkan", "ncnn", "gpu", "native", "neural", "onnx", "expressive", "multilingual", "hybrid", "kokoro", "melo", "supertonic"],
+        help="Synthesis engine tier (auto=Smart Routing, vulkan=GPU NCNN, native=Android voice, neural=VITS C++, kokoro=StyleTTS2 82M, melo=MeloTTS Bilingual, supertonic=Supertonic On-Device)"
     )
     synth_parser.add_argument("-m", "--model", default=None, help="Path to model file or directory")
     synth_parser.add_argument("-p", "--preset", default="balanced", choices=["fast", "balanced", "expressive", "ultra"])
@@ -42,6 +42,7 @@ def main():
     synth_parser.add_argument("--cpu", dest="device", action="store_const", const="cpu", help="Force CPU compute mode")
     synth_parser.add_argument("--tier", default=None, choices=["high", "medium", "balanced", "fast", "ultra"], help="Target model tier (high=Studio FP16, medium=Balanced)")
     synth_parser.add_argument("-s", "--speed", type=float, default=1.0, help="Speech speed multiplier (0.5 to 2.0)")
+    synth_parser.add_argument("--mode", default="unified", choices=["unified", "stitch"], help="Multilingual synthesis mode (unified=Single-pass G2P transliteration [BigTech Standard], stitch=Multi-model chunk concatenation)")
     synth_parser.add_argument("--threads", type=int, default=4, help="Compute worker threads (ARM NEON)")
     synth_parser.add_argument("--volume", type=int, default=None, help="Set Android media volume (1 to 15)")
     synth_parser.add_argument("--play", action="store_true", help="Play synthesized audio through physical speaker immediately")
@@ -101,7 +102,13 @@ def main():
             engine=args.engine,
             tier=getattr(args, "tier", None),
         ) as engine:
-            res = engine.synthesize(target_text, output=out_path, speed=args.speed, language=args.lang)
+            res = engine.synthesize(
+                target_text,
+                output=out_path,
+                speed=args.speed,
+                language=args.lang,
+                mode=getattr(args, "mode", "unified")
+            )
             backend_name = getattr(res, "backend", "UNKNOWN")
             model_name = getattr(res, "model_name", "model")
             dur = getattr(res, "duration_sec", 0.0)

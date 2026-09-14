@@ -55,7 +55,7 @@ def test_multilingual_engine_mock_synthesis():
     engine.register_engine("en", mock_en)
 
     text = "Hello 반가워 나는 parrot이라고 해"
-    result = engine.synthesize(text)
+    result = engine.synthesize(text, mode="stitch")
 
     assert isinstance(result, MultilingualResult)
     assert "en" in result.languages_detected
@@ -65,6 +65,21 @@ def test_multilingual_engine_mock_synthesis():
     assert len(result.chunks) >= 3
 
 
+def test_multilingual_engine_unified_mode():
+    engine = MultilingualNeuralEngine(sample_rate=22050)
+    mock_ko = MockSubEngine("ko", sample_rate=22050)
+    engine.register_engine("ko", mock_ko)
+
+    text = "Hello 반가워 나는 parrot이라고 해"
+    result = engine.synthesize(text, mode="unified")
+
+    assert isinstance(result, MultilingualResult)
+    assert result.backend == "UNIFIED_SINGLE_PASS_NEURAL"
+    assert "ko" in result.languages_detected
+    assert len(result.chunks) == 1
+    assert result.duration_sec > 0.0
+
+
 def test_zero_silent_fallback_on_unprovisioned_language():
     engine = MultilingualNeuralEngine(sample_rate=22050)
     mock_ko = MockSubEngine("ko", sample_rate=22050)
@@ -72,30 +87,31 @@ def test_zero_silent_fallback_on_unprovisioned_language():
     # English engine is NOT registered and not installed
 
     with pytest.raises(TTSModelLoadError) as exc_info:
-        # Hello will trigger English engine lookup and fail fast
-        engine.synthesize("Hello 반갑습니다")
+        # In stitch mode, unprovisioned English chunk fails fast
+        engine.synthesize("Hello 반갑습니다", mode="stitch")
     
     assert "[FAIL-FAST]" in str(exc_info.value)
 
 
 def test_tts_engine_gateway_auto_routing():
     # Verify TTSEngine routes to MultilingualNeuralEngine in auto mode for all speech
-    tts = TTSEngine(engine_type="auto", language="auto")
-    
-    # Mock multilingual engine
-    mock_multi = MagicMock()
-    mock_multi.synthesize.return_value = MagicMock(spec=MultilingualResult)
-    tts._multilingual_engine = mock_multi
+    with patch.object(TTSEngine, "_resolve_synth_engine", return_value=MagicMock()):
+        tts = TTSEngine(engine_type="auto", language="auto")
+        
+        # Mock multilingual engine
+        mock_multi = MagicMock()
+        mock_multi.synthesize.return_value = MagicMock(spec=MultilingualResult)
+        tts._multilingual_engine = mock_multi
 
-    # 1. In auto mode, text routes to multilingual orchestrator by default
-    tts.synthesize("Hello 안녕하세요")
-    mock_multi.synthesize.assert_called_once_with("Hello 안녕하세요", output=None, speed=1.0)
+        # 1. In auto mode, text routes to multilingual orchestrator by default
+        tts.synthesize("Hello 안녕하세요")
+        mock_multi.synthesize.assert_called_once_with("Hello 안녕하세요", output=None, speed=1.0, mode="unified")
 
-    # 2. When explicit dsp engine is requested, routes to synth_engine
-    tts_dsp = TTSEngine(engine_type="dsp")
-    with patch.object(tts_dsp.synth_engine, "synthesize", return_value=MagicMock()) as mock_synth:
-        tts_dsp.synthesize("DSP synthesis text")
-        mock_synth.assert_called_once()
+    # 2. When explicit native engine is requested, routes to native engine speak
+    tts_native = TTSEngine(engine_type="native")
+    with patch.object(tts_native.native_engine, "speak", return_value=MagicMock()) as mock_speak:
+        tts_native.synthesize("Native speech text")
+        mock_speak.assert_called_once_with("Native speech text")
 
 
 def test_resident_manager_lifecycle():

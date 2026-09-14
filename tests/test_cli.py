@@ -1,4 +1,4 @@
-﻿"""
+"""
 Tests for termux-tts CLI zero-config argument routing and ergonomic entrypoints.
 """
 import sys
@@ -31,6 +31,7 @@ class TestCLIRouting(unittest.TestCase):
             output=unittest.mock.ANY,
             speed=1.0,
             language="auto",
+            mode="unified",
         )
 
     @patch("termux_tts.cli.load")
@@ -49,6 +50,7 @@ class TestCLIRouting(unittest.TestCase):
             output=unittest.mock.ANY,
             speed=1.0,
             language="auto",
+            mode="unified",
         )
 
     @patch("termux_tts.cli.load")
@@ -67,6 +69,7 @@ class TestCLIRouting(unittest.TestCase):
             output=unittest.mock.ANY,
             speed=1.0,
             language="ko",
+            mode="unified",
         )
 
     @patch("termux_tts.cli.load")

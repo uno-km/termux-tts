@@ -78,7 +78,8 @@ def resolve_device_backend(
                 f"Action Required: Use CPU or DSP synthesis via '--device cpu' or '--engine dsp'."
             ) from e
 
-        return "vulkan", "vulkan"
+        effective_eng = req_eng if req_eng not in ("auto", "gpu") else "vulkan"
+        return "vulkan", effective_eng
 
     # Auto mode: probe if ameva-runtime is available
     if req_dev == "auto":
@@ -137,18 +138,29 @@ def get_unified_model_search_dirs(submodule: str = "tts") -> list:
         p = Path(env_dir)
         dirs.extend([p / submodule, p])
 
-    dirs.extend([
-        home / "models" / submodule,
-        home / "models",
-        home / "ameva-models" / submodule,
-        home / "ameva-models",
-        home / ".cache" / "ameva" / "models" / submodule,
-        home / ".cache" / "ameva" / "models",
-        Path(f"/data/data/com.termux/files/home/models/{submodule}"),
-        Path("/data/data/com.termux/files/home/models"),
-        Path(f"/data/data/com.termux/files/home/ameva-models/{submodule}"),
-        Path("/data/data/com.termux/files/home/ameva-models"),
-        home / ".cache" / f"termux-{submodule}" / "models",
-        Path(f"/data/data/com.termux/files/home/.cache/termux-{submodule}/models"),
-    ])
-    return dirs
+    prefixes = [home]
+    prefix_env = os.environ.get("PREFIX")
+    if prefix_env:
+        prefixes.append(Path(prefix_env).parent / "home")
+
+    for base in prefixes:
+        dirs.extend([
+            base / "models" / submodule,
+            base / "models",
+            base / "ameva-models" / submodule,
+            base / "ameva-models",
+            base / ".cache" / "ameva" / "models" / submodule,
+            base / ".cache" / "ameva" / "models",
+            base / ".cache" / f"termux-{submodule}" / "models",
+        ])
+
+    # Deduplicate while preserving order
+    seen = set()
+    unique_dirs = []
+    for d in dirs:
+        resolved = str(d)
+        if resolved not in seen:
+            seen.add(resolved)
+            unique_dirs.append(d)
+
+    return unique_dirs
