@@ -228,11 +228,13 @@ class TTSEngine:
         preset: Optional[str] = None,
         language: Optional[str] = None,
         mode: str = "unified",
+        output_path: Optional[str] = None,
     ) -> Union[SherpaResult, ExpressiveResult, NativeResult, MultilingualResult]:
         """Synthesize text into speech audio buffer / WAV file with Zero-Config intelligent routing."""
         if self._is_closed:
             raise TTSInferenceError("Cannot synthesize: Engine session is closed.")
 
+        output = output or output_path
         clean_text = text.strip() if text else ""
         if not clean_text:
             raise TTSInferenceError("Cannot synthesize empty text.")
