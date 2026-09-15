@@ -17,6 +17,7 @@ from typing import Optional, List, Dict, Any
 
 from .audio import AudioBuffer
 from .exceptions import TTSModelLoadError, TTSInferenceError
+from .hardware import get_clean_execution_env
 
 logger = logging.getLogger("termux_tts.engine_sherpa")
 
@@ -320,15 +321,11 @@ class SherpaNeuralEngine:
                     cmd.append(f"--vits-lexicon={self.model_assets['lexicon']}")
                 cmd.append(normalized_text)
 
-            env = os.environ.copy()
-            env["PYTHONIOENCODING"] = "utf-8"
-            env["LANG"] = "en_US.UTF-8"
-            env["LC_ALL"] = "en_US.UTF-8"
-            # Ensure proper thread affinity and libraries
-            if os.path.exists("/system/lib64/libvulkan.so"):
-                current_ld = env.get("LD_LIBRARY_PATH", "")
-                if not current_ld.startswith("/system/lib64"):
-                    env["LD_LIBRARY_PATH"] = f"/system/lib64:{current_ld}".rstrip(":")
+            env = get_clean_execution_env({
+                "PYTHONIOENCODING": "utf-8",
+                "LANG": "en_US.UTF-8",
+                "LC_ALL": "en_US.UTF-8",
+            })
 
             res = subprocess.run(
                 cmd,

@@ -8,6 +8,7 @@ import tarfile
 import urllib.request
 import shutil
 from pathlib import Path
+from .hardware import get_clean_execution_env
 
 def get_candidate_vulkan_binary_urls():
     """Generate dynamic candidate endpoints for Vulkan binary provisioner."""
@@ -362,9 +363,7 @@ def run_installation(tier: str = "high", models: str = "default", force: bool = 
         f"--output-filename={test_wav}",
         "It's Python, hello! Vulkan GPU speech synthesis is installed and ready."
     ]
-    env = os.environ.copy()
-    env["LD_LIBRARY_PATH"] = f"/system/lib64:{env.get('LD_LIBRARY_PATH', '')}"
-    env["AMEVA_VK_DSP_ACCEL"] = "1"
+    env = get_clean_execution_env({"AMEVA_VK_DSP_ACCEL": "1"})
 
     proc = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, env=env)
     if proc.returncode == 0:

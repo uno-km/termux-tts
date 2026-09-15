@@ -24,6 +24,7 @@ import numpy as np
 
 from .audio import AudioBuffer
 from .exceptions import TTSModelLoadError, TTSInferenceError, VulkanInitializationError
+from .hardware import get_clean_execution_env
 from .tokenizer_melo import MeloTokenizer
 
 logger = logging.getLogger("termux_tts.engine_vulkan")
@@ -248,9 +249,7 @@ class VulkanNeuralEngine:
                 f"--output-filename={temp_wav}",
                 clean_text,
             ]
-            env = os.environ.copy()
-            if os.path.exists("/system/lib64"):
-                env["LD_LIBRARY_PATH"] = f"/system/lib64:{env.get('LD_LIBRARY_PATH', '')}"
+            env = get_clean_execution_env()
 
             proc = subprocess.run(
                 cmd,
@@ -323,9 +322,7 @@ class VulkanNeuralEngine:
 
         try:
             cmd = [self.binary, self.model_file, temp_params, temp_bin]
-            env = os.environ.copy()
-            if os.path.exists("/system/lib64"):
-                env["LD_LIBRARY_PATH"] = f"/system/lib64:{env.get('LD_LIBRARY_PATH', '')}"
+            env = get_clean_execution_env()
 
             proc = subprocess.run(
                 cmd,

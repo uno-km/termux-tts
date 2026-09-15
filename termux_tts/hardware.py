@@ -164,3 +164,57 @@ def get_unified_model_search_dirs(submodule: str = "tts") -> list:
             unique_dirs.append(d)
 
     return unique_dirs
+
+
+def get_clean_execution_env(extra_env: Optional[dict[str, str]] = None) -> dict[str, str]:
+    """Assemble a clean environment dictionary conforming to Gate 1 safety rules.
+
+    Guarantees:
+    - Never injects /system/lib64, /vendor/lib64, /apex/ or other OS system paths into LD_LIBRARY_PATH.
+    - Uses AMEVA-Runtime TtsAdapter.get_execution_env() when available.
+    - Sanitizes existing LD_LIBRARY_PATH against forbidden system prefixes to prevent dual C++ runtime collisions.
+    """
+    import os
+    from pathlib import Path
+
+    env = dict(os.environ)
+    if extra_env:
+        env.update(extra_env)
+
+    try:
+        from ameva_runtime.adapters.tts import TtsAdapter
+        return TtsAdapter.get_execution_env(extra_env=env)
+    except Exception:
+        pass
+
+    try:
+        from ameva_runtime.adapters.base import get_vulkan_env
+        return get_vulkan_env(base_env=env)
+    except Exception:
+        pass
+
+    # Standalone Gate 1 fallback without ameva_runtime
+    current_ld = env.get("LD_LIBRARY_PATH", "")
+    forbidden_prefixes = ("/system/", "/vendor/", "/apex/", "/system_ext/", "/odm/", "/product/")
+    existing_parts = [p for p in current_ld.split(":") if p and not any(p.startswith(fp) for fp in forbidden_prefixes)]
+
+    home = Path.home()
+    engine_dirs = []
+    eng_lib = home / ".local" / "share" / "ameva" / "current" / "tts" / "lib"
+    if eng_lib.is_dir():
+        engine_dirs.append(str(eng_lib))
+    local_lib = home / ".local" / "lib"
+    if local_lib.is_dir():
+        engine_dirs.append(str(local_lib))
+
+    merged = []
+    for d in engine_dirs + existing_parts:
+        if d not in merged and not any(d.startswith(fp) for fp in forbidden_prefixes):
+            merged.append(d)
+
+    if merged:
+        env["LD_LIBRARY_PATH"] = ":".join(merged)
+    elif "LD_LIBRARY_PATH" in env:
+        env["LD_LIBRARY_PATH"] = ""
+
+    return env
