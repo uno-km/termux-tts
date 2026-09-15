@@ -240,6 +240,18 @@ class HardwareProfile:
     soc_model: Optional[str] = None
     features: List[str] = field(default_factory=list)
 
+    @property
+    def soc_name(self) -> str:
+        return self.soc_model or "Unknown SoC"
+
+    @property
+    def cpu_cores(self) -> int:
+        return self.cpu_count
+
+    @property
+    def threads(self) -> int:
+        return self.recommended_threads
+
 
 def is_termux() -> bool:
     import os
