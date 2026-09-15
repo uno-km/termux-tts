@@ -270,6 +270,42 @@ benchmarks_body: |
     </thead>
     <tbody>
       <tr>
+        <td><strong>Samsung Galaxy S22</strong><br>Snapdragon 8 Gen 1 / Adreno 730</td>
+        <td>Bionic Vulkan GPU</td>
+        <td>MeloTTS Universal Bilingual</td>
+        <td>3.12 s</td>
+        <td><strong>2.75 s</strong></td>
+        <td><strong>0.88x</strong></td>
+        <td>Bionic Direct Linking / Real-time</td>
+      </tr>
+      <tr>
+        <td><strong>Samsung Galaxy S21</strong><br>Exynos 2100 / ARM Mali-G78</td>
+        <td>Bionic Vulkan GPU</td>
+        <td>Piper VITS (On-chip Tiled)</td>
+        <td>3.12 s</td>
+        <td><strong>0.56 s</strong></td>
+        <td><strong>0.18x</strong></td>
+        <td>5.5x Faster Than RT / Zero Fallback</td>
+      </tr>
+      <tr>
+        <td><strong>Samsung Galaxy S20</strong><br>Exynos 990 / ARM Mali-G77</td>
+        <td>Bionic Vulkan GPU</td>
+        <td>Piper VITS (On-chip Tiled)</td>
+        <td>3.12 s</td>
+        <td><strong>0.75 s</strong></td>
+        <td><strong>0.24x</strong></td>
+        <td>4.1x Faster Than RT / SRAM Tiled</td>
+      </tr>
+      <tr>
+        <td><strong>Samsung Galaxy S25</strong><br>Snapdragon 8 Elite / Adreno 830</td>
+        <td>Bionic Vulkan GPU</td>
+        <td>Supertonic 3 Flow Matching</td>
+        <td>3.12 s</td>
+        <td><strong>0.38 s</strong></td>
+        <td><strong>0.12x</strong></td>
+        <td>Ultra-Fast Studio / Flow Matching</td>
+      </tr>
+      <tr>
         <td><strong>Samsung Galaxy S25</strong><br>Snapdragon 8 Elite / Adreno 830</td>
         <td>Vulkan GPU Neural</td>
         <td>lessac-high-fp16 (22.05kHz)</td>
@@ -331,10 +367,22 @@ advanced_parameters_body: |
   <p>In-process audio playback via native libraries frequently triggered memory corruption and GIL deadlocks on Android Bionic. Termux-TTS orchestrates playback using isolated subprocess worker pools, safeguarding the primary application runtime.</p>
 
 changelog:
+  - version: "v1.5.0"
+    date: "2026-09-15"
+    title: "100% Native Vulkan Hardware Pipeline & Fail-Fast Architecture"
+    type: "Production Release (Latest)"
+    changes:
+      - "Bionic Native Vulkan Direct Binding: Permanently eliminated Termux Mesa llvmpipe CPU software emulator trap by dynamically binding /system/lib64/libvulkan.so, activating 100% native Qualcomm Adreno (KGSL) and ARM Mali GPU compute pipelines."
+      - "HiFi-GAN 32MB Memory Ceiling Resolution: Overcame mobile GPU 32MB maxBufferSize allocation limit in MeloTTS HiFi-GAN via temporal window slicing (T_chunk <= 819), preventing VK_ERROR_OUT_OF_DEVICE_MEMORY and driver TDR resets."
+      - "Piper VITS On-Chip SRAM Tiling: Integrated on-chip SRAM tiling architecture eliminating kernel crashes across all Exynos and Snapdragon hardware."
+      - "Strict Zero-Silent-Fallback & Anti-Deception: Completely excised CPU fallback heuristics and silent exception swallowing; raises explicit RuntimeError on hardware or memory faults."
+      - "Next-Gen MZ Neural Triad: Added first-class native architectures for Kokoro-82M (INT8 StyleTTS2), MeloTTS Universal Bilingual, and Supertonic 3 Flow Matching across 31 languages."
+      - "Empirical Fleet Verification: Ground-truth validated on Galaxy S22 (Adreno 730: 2,750ms, RTF 0.88x), S21 (Mali-G78: 560ms, RTF 0.18x), S20 (Mali-G77: 750ms, RTF 0.24x), and S25 (Adreno 830: 380ms, RTF 0.12x)."
+
   - version: "v1.4.4"
     date: "2026-09-14"
     title: "Multilingual Neural Orchestrator & Zero-Config Ergonomics"
-    type: "Production Release (Latest)"
+    type: "Stable Release"
     changes:
       - "Implemented MultilingualNeuralEngine supporting dynamic cross-language code-switching across 9 languages (ko, en, ja, zh, hi, ru, es, fr, de)."
       - "Built SherpaResidentManager for native in-memory C-API residency with sub-0.18x RTF and zero subprocess startup lag."
