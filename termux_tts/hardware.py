@@ -218,3 +218,63 @@ def get_clean_execution_env(extra_env: Optional[dict[str, str]] = None) -> dict[
         env["LD_LIBRARY_PATH"] = ""
 
     return env
+
+
+# Standard Unified Hardware Interface Bridges
+from dataclasses import dataclass, field
+from typing import List
+
+@dataclass
+class HardwareProfile:
+    is_termux: bool = False
+    is_android: bool = False
+    is_arm64: bool = False
+    cpu_count: int = 4
+    recommended_threads: int = 4
+    ram_total_mb: float = 0.0
+    ram_available_mb: float = 0.0
+    has_neon: bool = True
+    has_fp16: bool = False
+    has_vulkan: bool = False
+    gpu_name: Optional[str] = None
+    soc_model: Optional[str] = None
+    features: List[str] = field(default_factory=list)
+
+
+def is_termux() -> bool:
+    import os
+    if os.environ.get("TERMUX_VERSION") or os.environ.get("TERMUX_APP_PID"):
+        return True
+    prefix = os.environ.get("PREFIX", "")
+    if "com.termux" in prefix:
+        return True
+    return Path("/data/data/com.termux").is_dir()
+
+
+def is_android() -> bool:
+    if is_termux():
+        return True
+    if Path("/system/build.prop").exists() or Path("/system/bin/sh").exists():
+        return True
+    import sys
+    return "android" in sys.platform.lower()
+
+
+def detect_hardware() -> HardwareProfile:
+    import multiprocessing
+    cores = multiprocessing.cpu_count()
+    return HardwareProfile(
+        is_termux=is_termux(),
+        is_android=is_android(),
+        cpu_count=cores,
+        recommended_threads=max(1, cores // 2) if cores > 2 else cores,
+    )
+
+
+def resolve_device(requested_device: str = "auto") -> Tuple[str, int]:
+    device, _ = resolve_device_backend(requested_device)
+    return device, 32 if device == "vulkan" else 4
+
+
+def bind_hardware(engine: Any, requested_device: str = "auto", **kwargs) -> Optional[Any]:
+    return bind_tts_hardware(engine, requested_device)
