@@ -25,7 +25,7 @@ fi
 
 # 2. Python Toolchain & Package Installation (pip)
 echo "[2/4] Installing Python SDK and CLI via pip..."
-pip install --upgrade pip setuptools wheel
+pip install setuptools wheel
 if pip install ameva-runtime 2>/dev/null; then
     echo "  -> ameva-runtime hardware diagnostics bound."
 else

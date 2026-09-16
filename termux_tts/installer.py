@@ -153,13 +153,14 @@ OFFICIAL_NEURAL_MODELS = {
 }
 
 def get_install_paths():
-    home = Path.home().resolve()
-    bin_dir = (home / ".local" / "bin").resolve()
-    cache_dir = (home / ".cache" / "termux-tts" / "models").resolve()
-    models_tts_dir = (home / "models" / "tts").resolve()
+    prefix = Path(os.environ.get("PREFIX", "/data/data/com.termux/files/usr")).resolve()
+    bin_dir = (prefix / "bin").resolve()
+    lib_dir = (prefix / "lib").resolve()
+    xdg_cache = Path(os.environ.get("XDG_CACHE_HOME") or (Path.home() / ".cache")).resolve()
+    cache_dir = (xdg_cache / "termux-tts" / "models").resolve()
     bin_dir.mkdir(parents=True, exist_ok=True)
+    lib_dir.mkdir(parents=True, exist_ok=True)
     cache_dir.mkdir(parents=True, exist_ok=True)
-    models_tts_dir.mkdir(parents=True, exist_ok=True)
     return bin_dir, cache_dir
 
 def download_with_progress(url: str, dest_path: Path, label: str):
@@ -189,13 +190,16 @@ def download_with_progress(url: str, dest_path: Path, label: str):
 def install_vulkan_binary(force: bool = False) -> Path:
     bin_dir, _ = get_install_paths()
     binary_path = bin_dir / "sherpa-ncnn-offline-tts"
-    prefix_bin = Path(os.environ.get("PREFIX", "/data/data/com.termux/files/usr")) / "bin"
+    lib_dir = Path(os.environ.get("PREFIX", "/data/data/com.termux/files/usr")) / "lib"
     
     if binary_path.exists() and not force:
         print(f"  [OK] Pre-compiled Vulkan binary already exists: {binary_path}")
         return binary_path
 
-    tar_path = bin_dir / "sherpa-vulkan.tar.gz"
+    xdg_cache = Path(os.environ.get("XDG_CACHE_HOME") or (Path.home() / ".cache")).resolve()
+    staging_dir = xdg_cache / "termux-tts" / ".staging-vulkan"
+    staging_dir.mkdir(parents=True, exist_ok=True)
+    tar_path = staging_dir / "sherpa-vulkan.tar.gz"
     candidate_urls = get_candidate_vulkan_binary_urls()
     download_success = False
 
@@ -212,26 +216,45 @@ def install_vulkan_binary(force: bool = False) -> Path:
             continue
 
     if not download_success:
+        shutil.rmtree(staging_dir, ignore_errors=True)
         raise RuntimeError("Failed to download sherpa-ncnn-offline-tts from any candidate endpoints.")
 
-    print("  [EXTRACTING] Installing binary to ~/.local/bin...")
+    print(f"  [EXTRACTING] Extracting binary to staging isolation {staging_dir}...")
     with tarfile.open(tar_path, "r:gz") as tar:
-        tar.extractall(path=bin_dir)
+        tar.extractall(path=staging_dir)
 
     tar_path.unlink(missing_ok=True)
+
+    # Move binary to $PREFIX/bin
+    found_bin = None
+    for p in staging_dir.rglob("sherpa-ncnn-offline-tts"):
+        if p.is_file():
+            found_bin = p
+            break
+
+    if not found_bin:
+        shutil.rmtree(staging_dir, ignore_errors=True)
+        raise RuntimeError("sherpa-ncnn-offline-tts binary not found inside extracted archive.")
+
+    # Atomic move to $PREFIX/bin
+    shutil.copy2(found_bin, binary_path)
     binary_path.chmod(0o755)
 
-    # Dual-path installation to PREFIX/bin if writable
-    try:
-        if prefix_bin.exists() and os.access(prefix_bin, os.W_OK):
-            target_prefix_bin = prefix_bin / "sherpa-ncnn-offline-tts"
-            shutil.copy2(binary_path, target_prefix_bin)
-            target_prefix_bin.chmod(0o755)
-            print(f"  [SYMLINK/COPY] Linked to {target_prefix_bin}")
-    except OSError:
-        pass
+    # Move any extracted shared libraries to $PREFIX/lib
+    lib_dir.mkdir(parents=True, exist_ok=True)
+    for so_file in staging_dir.rglob("*.so*"):
+        if so_file.is_file():
+            target_so = lib_dir / so_file.name
+            shutil.copy2(so_file, target_so)
+            try:
+                target_so.chmod(0o755)
+            except OSError:
+                pass
 
-    print(f"  [SUCCESS] Installed: {binary_path}")
+    # Clean staging directory
+    shutil.rmtree(staging_dir, ignore_errors=True)
+
+    print(f"  [SUCCESS] Installed to SSOT: {binary_path}")
     return binary_path
 
 def install_vits_model(tier: str = "high", force: bool = False, output_dir: Optional[Path] = None) -> Path:
