@@ -8,6 +8,7 @@ import tarfile
 import urllib.request
 import shutil
 from pathlib import Path
+from typing import Optional
 from .hardware import get_clean_execution_env
 
 def get_candidate_vulkan_binary_urls():
@@ -233,14 +234,17 @@ def install_vulkan_binary(force: bool = False) -> Path:
     print(f"  [SUCCESS] Installed: {binary_path}")
     return binary_path
 
-def install_vits_model(tier: str = "high", force: bool = False) -> Path:
+def install_vits_model(tier: str = "high", force: bool = False, output_dir: Optional[Path] = None) -> Path:
     tier = tier.lower()
     if tier not in MODEL_REGISTRY:
         tier = "high"
     
     cfg = MODEL_REGISTRY[tier]
-    _, cache_dir = get_install_paths()
-    model_dir = cache_dir / cfg["name"]
+    if output_dir:
+        model_dir = Path(output_dir) / cfg["name"]
+    else:
+        _, cache_dir = get_install_paths()
+        model_dir = cache_dir / cfg["name"]
     model_dir.mkdir(parents=True, exist_ok=True)
 
     print(f"\n[MODEL] Provisioning {cfg['description']}...")

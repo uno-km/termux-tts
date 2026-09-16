@@ -24,7 +24,7 @@ def resolve_model_path(model_name: str = "vits-piper-ko") -> Path:
 def download_model(model_name: str = "vits-piper-ko", output_dir: Optional[Path] = None, force: bool = False) -> Path:
     from .installer import install_vits_model
     tier = "high" if "melo" in model_name else "fast"
-    return Path(install_vits_model(tier=tier, force=force))
+    return Path(install_vits_model(tier=tier, force=force, output_dir=output_dir))
 
 def list_models() -> List[Dict[str, Any]]:
     return [{"id": k, **v} for k, v in AVAILABLE_MODELS.items()]

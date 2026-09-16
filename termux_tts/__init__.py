@@ -6,7 +6,7 @@ termux-tts: Production-Grade 4-Tier TTS Framework for Android Termux.
 - Tier 4: Pure On-Device Expressive Emotional Synthesizer (Conversational Tags)
 """
 
-from .engine import TTSEngine, load, doctor
+from .engine import TTSEngine, load, doctor, QUALITY_PRESETS
 from .engine_native import NativeAndroidEngine, NativeResult
 from .engine_sherpa import SherpaNeuralEngine, SherpaResult
 from .engine_vulkan import VulkanNeuralEngine, VulkanResult
@@ -26,6 +26,9 @@ from .exceptions import (
     TTSAudioEncodingError,
     TTSLanguageNotSupportedError
 )
+from .hardware import HardwareProfile, detect_hardware, resolve_device
+from .downloader import list_models, download_model, resolve_model_path
+from .exceptions import AmevaTermuxError, TermuxTTSError
 
 # Backward-compatibility alias
 ONNXNeuralEngine = SherpaNeuralEngine
@@ -60,6 +63,14 @@ __all__ = [
     "korean_text_to_phonemes",
     "EXPRESSIVE_TAGS",
     "AudioBuffer",
+    "HardwareProfile",
+    "detect_hardware",
+    "resolve_device",
+    "list_models",
+    "download_model",
+    "resolve_model_path",
+    "AmevaTermuxError",
+    "TermuxTTSError",
     "TTSError",
     "TTSModelLoadError",
     "TTSInferenceError",
@@ -67,4 +78,3 @@ __all__ = [
     "TTSAudioEncodingError",
     "TTSLanguageNotSupportedError"
 ]
-

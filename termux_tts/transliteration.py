@@ -1,4 +1,4 @@
-﻿import re
+import re
 from typing import Dict, List, Tuple
 
 COMMON_EN_KO_LEXICON: Dict[str, str] = {

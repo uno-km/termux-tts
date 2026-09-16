@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import importlib.util
 import logging
+from pathlib import Path
 import sys
 from typing import Optional, Tuple, Any
 
@@ -264,12 +265,9 @@ def is_termux() -> bool:
 
 
 def is_android() -> bool:
-    if is_termux():
-        return True
-    if Path("/system/build.prop").exists() or Path("/system/bin/sh").exists():
-        return True
-    import sys
-    return "android" in sys.platform.lower()
+    """Check whether running on Android (Termux execution implies Android runtime)."""
+    return is_termux()
+
 
 
 def detect_hardware() -> HardwareProfile:
@@ -288,5 +286,12 @@ def resolve_device(requested_device: str = "auto") -> Tuple[str, int]:
     return device, 32 if device == "vulkan" else 4
 
 
+def get_optimal_threads() -> int:
+    """Standard Unified Optimal Threads Calculator for termux-tts."""
+    return detect_hardware().recommended_threads
+
+
 def bind_hardware(engine: Any, requested_device: str = "auto", **kwargs) -> Optional[Any]:
+    """Standard Unified Hardware Binding Interface for termux-tts."""
     return bind_tts_hardware(engine, requested_device)
+
