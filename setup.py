@@ -14,7 +14,6 @@ setup(
     python_requires=">=3.8",
     install_requires=[
         "numpy>=1.20.0",
-        "ameva-runtime>=2.0.0",
     ],
     extras_require={
         "onnx": ["onnxruntime>=1.15.0"],
