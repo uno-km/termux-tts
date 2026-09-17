@@ -57,10 +57,10 @@ def main():
     # 3. Doctor (Diagnostics)
     subparsers.add_parser("doctor", help="Run 12-stage Vulkan GPU hardware diagnostics")
 
-    # 4. Install (One-Click Automated Provisioner)
-    install_parser = subparsers.add_parser("install", help="1-Click download and provision precompiled Vulkan binary & VITS studio models")
-    install_parser.add_argument("-b", "--backend", default="auto", choices=["auto", "cpu", "vulkan"], help="Compute backend to provision (auto, cpu, vulkan)")
-    install_parser.add_argument("--tier", default="high", choices=["high", "medium"], help="Model resolution tier (high=57MB Studio FP16, medium=25MB Fast)")
+    # 4. Install (One-Click Automated Provisioner - Pure CPU Baseline Default)
+    install_parser = subparsers.add_parser("install", help="1-Click download and provision native CPU Sherpa neural engine and models")
+    install_parser.add_argument("-b", "--backend", default="cpu", choices=["cpu", "vulkan"], help="Compute backend to provision (default: cpu)")
+    install_parser.add_argument("--tier", default=None, choices=["high", "medium"], help="Vulkan GPU model resolution tier (optional)")
     install_parser.add_argument(
         "--models", default="default",
         help="Language model packages to provision: default (Korean & English only), or specific code: hi, ja, zh, ru, es, fr, de, or 'all'"
@@ -141,9 +141,9 @@ def main():
     elif args.command == "install":
         from .installer import run_installation
         run_installation(
-            tier=args.tier,
+            tier=getattr(args, "tier", None) or "high",
             models=getattr(args, "models", "default"),
-            backend=getattr(args, "backend", "auto"),
+            backend=getattr(args, "backend", "cpu"),
             force=args.force,
             play=not args.no_play
         )

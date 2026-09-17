@@ -431,12 +431,12 @@ def provision_neural_model_archive(language: str, force: bool = False) -> Path:
             f"[FAIL-FAST] Failed to auto-provision neural model '{cfg['name']}': {err}"
         ) from err
 
-def run_installation(tier: str = "high", models: str = "default", backend: str = "auto", force: bool = False, play: bool = True):
+def run_installation(tier: str = "high", models: str = "default", backend: str = "cpu", force: bool = False, play: bool = True):
     print("=" * 70)
     print("   TERMUX-TTS AUTOMATED PROVISIONER (BATTERIES-INCLUDED RUNTIME)")
     print("=" * 70)
 
-    eff_backend = (backend or "auto").strip().lower()
+    eff_backend = (backend or "cpu").strip().lower()
 
     if eff_backend == "cpu":
         # 1. Install pre-compiled Sherpa-ONNX CPU binary
