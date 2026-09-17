@@ -40,6 +40,30 @@ def get_candidate_vulkan_binary_urls():
 
     return urls
 
+def get_candidate_cpu_binary_urls():
+    """Generate dynamic candidate endpoints for Sherpa CPU binary provisioner."""
+    try:
+        from . import __version__
+    except Exception:
+        __version__ = "1.5.0"
+
+    urls = []
+    custom_tag = os.environ.get("TERMUX_TTS_RELEASE_TAG", "").strip()
+    custom_base = os.environ.get("TERMUX_TTS_RELEASE_BASE", "").strip()
+
+    if custom_base:
+        urls.append(f"{custom_base.rstrip('/')}/sherpa-onnx-android-arm64.tar.gz")
+    if custom_tag:
+        tag = custom_tag if custom_tag.startswith("v") else f"v{custom_tag}"
+        urls.append(f"https://github.com/uno-km/termux-tts/releases/download/{tag}/sherpa-onnx-android-arm64.tar.gz")
+
+    current_tag = f"v{__version__}"
+    urls.append(f"https://github.com/uno-km/termux-tts/releases/download/{current_tag}/sherpa-onnx-android-arm64.tar.gz")
+    urls.append("https://github.com/uno-km/termux-tts/releases/latest/download/sherpa-onnx-android-arm64.tar.gz")
+    urls.append("https://github.com/uno-km/termux-stt/releases/download/v1.2.7/sherpa-onnx-android-arm64.tar.gz")
+
+    return urls
+
 MODEL_REGISTRY = {
     "high": {
         "name": "ncnn-vits-piper-en_US-lessac-high-fp16",
@@ -257,6 +281,71 @@ def install_vulkan_binary(force: bool = False) -> Path:
     print(f"  [SUCCESS] Installed to SSOT: {binary_path}")
     return binary_path
 
+def install_cpu_binary(force: bool = False) -> Path:
+    bin_dir, _ = get_install_paths()
+    binary_path = bin_dir / "sherpa-onnx-offline-tts"
+    lib_dir = Path(os.environ.get("PREFIX", "/data/data/com.termux/files/usr")) / "lib"
+
+    if binary_path.exists() and not force:
+        print(f"  [OK] Pre-compiled Sherpa CPU binary already exists: {binary_path}")
+        return binary_path
+
+    xdg_cache = Path(os.environ.get("XDG_CACHE_HOME") or (Path.home() / ".cache")).resolve()
+    staging_dir = xdg_cache / "termux-tts" / ".staging-cpu"
+    staging_dir.mkdir(parents=True, exist_ok=True)
+    tar_path = staging_dir / "sherpa-cpu.tar.gz"
+    candidate_urls = get_candidate_cpu_binary_urls()
+    download_success = False
+
+    for url in candidate_urls:
+        try:
+            download_with_progress(url, tar_path, f"ARM64 Sherpa CPU Binary ({url})")
+            if tar_path.exists() and tar_path.stat().st_size > 500 * 1024:
+                download_success = True
+                break
+        except Exception as dl_err:
+            print(f"  [-] Candidate URL failed ({url}): {dl_err}")
+            if tar_path.exists():
+                tar_path.unlink(missing_ok=True)
+            continue
+
+    if not download_success:
+        shutil.rmtree(staging_dir, ignore_errors=True)
+        raise RuntimeError("Failed to download sherpa-onnx-offline-tts from any candidate endpoints.")
+
+    print(f"  [EXTRACTING] Extracting CPU binary to staging isolation {staging_dir}...")
+    with tarfile.open(tar_path, "r:gz") as tar:
+        tar.extractall(path=staging_dir)
+
+    tar_path.unlink(missing_ok=True)
+
+    found_bin = None
+    for p in staging_dir.rglob("sherpa-onnx-offline-tts"):
+        if p.is_file():
+            found_bin = p
+            break
+
+    if not found_bin:
+        shutil.rmtree(staging_dir, ignore_errors=True)
+        raise RuntimeError("sherpa-onnx-offline-tts binary not found inside extracted archive.")
+
+    shutil.copy2(found_bin, binary_path)
+    binary_path.chmod(0o755)
+
+    lib_dir.mkdir(parents=True, exist_ok=True)
+    for so_file in staging_dir.rglob("*.so*"):
+        if so_file.is_file():
+            target_so = lib_dir / so_file.name
+            shutil.copy2(so_file, target_so)
+            try:
+                target_so.chmod(0o755)
+            except OSError:
+                pass
+
+    shutil.rmtree(staging_dir, ignore_errors=True)
+    print(f"  [SUCCESS] CPU engine installed to SSOT: {binary_path}")
+    return binary_path
+
 def install_vits_model(tier: str = "high", force: bool = False, output_dir: Optional[Path] = None) -> Path:
     tier = tier.lower()
     if tier not in MODEL_REGISTRY:
@@ -342,16 +431,24 @@ def provision_neural_model_archive(language: str, force: bool = False) -> Path:
             f"[FAIL-FAST] Failed to auto-provision neural model '{cfg['name']}': {err}"
         ) from err
 
-def run_installation(tier: str = "high", models: str = "default", force: bool = False, play: bool = True):
+def run_installation(tier: str = "high", models: str = "default", backend: str = "auto", force: bool = False, play: bool = True):
     print("=" * 70)
     print("   TERMUX-TTS AUTOMATED PROVISIONER (BATTERIES-INCLUDED RUNTIME)")
     print("=" * 70)
-    
-    # 1. Install pre-compiled Vulkan binary
-    bin_path = install_vulkan_binary(force=force)
-    
-    # 2. Install VITS model
-    model_path = install_vits_model(tier=tier, force=force)
+
+    eff_backend = (backend or "auto").strip().lower()
+
+    if eff_backend == "cpu":
+        # 1. Install pre-compiled Sherpa-ONNX CPU binary
+        print("\n[CPU MODE] Provisioning ARM64 Sherpa CPU Native Binary & ONNX Runtime...")
+        bin_path = install_cpu_binary(force=force)
+        model_path = None
+    else:
+        # 1. Install pre-compiled Vulkan binary
+        print("\n[VULKAN MODE] Provisioning ARM64 Vulkan GPU Binary & NCNN Models...")
+        bin_path = install_vulkan_binary(force=force)
+        # 2. Install VITS model for Vulkan
+        model_path = install_vits_model(tier=tier, force=force)
 
     # 2b. Install Multilingual VITS ONNX Models
     # Default is ONLY Korean (ko) & English (en) for ultra-lightweight initial setup!
@@ -370,37 +467,54 @@ def run_installation(tier: str = "high", models: str = "default", force: bool = 
             provision_neural_model_archive(lang, force=force)
         except Exception as e:
             print(f"  [-] Multilingual {lang} provisioning note: {e}")
-    
+
     # 3. Environment check
-    vulkan_lib = Path("/system/lib64/libvulkan.so")
-    if not vulkan_lib.exists():
-        print("  [WARNING] /system/lib64/libvulkan.so not found. Ensure device supports Vulkan.")
-    else:
-        print("  [OK] Android Vulkan driver detected: /system/lib64/libvulkan.so")
+    if eff_backend != "cpu":
+        vulkan_lib = Path("/system/lib64/libvulkan.so")
+        if not vulkan_lib.exists():
+            print("  [WARNING] /system/lib64/libvulkan.so not found. Ensure device supports Vulkan.")
+        else:
+            print("  [OK] Android Vulkan driver detected: /system/lib64/libvulkan.so")
 
-    print("\n[VERIFICATION] Running 1-second self-test on Vulkan GPU...")
-    test_wav = Path.home() / "install_test_vulkan.wav"
-    
+    print("\n[VERIFICATION] Running on-device self-test...")
+    test_wav = Path.home() / "install_test_tts.wav"
+
     import subprocess
-    cmd = [
-        str(bin_path),
-        f"--vits-model-dir={model_path}",
-        "--use-vulkan-compute=1",
-        "--num-threads=1",
-        f"--output-filename={test_wav}",
-        "It's Python, hello! Vulkan GPU speech synthesis is installed and ready."
-    ]
-    env = get_clean_execution_env({"AMEVA_VK_DSP_ACCEL": "1"})
-
-    proc = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, env=env)
-    if proc.returncode == 0:
-        print("  [VERIFIED] Vulkan GPU synthesis self-test passed with exit code 0!")
-        if play and shutil.which("termux-media-player"):
-            print("  [PLAYBACK] Playing verification audio through physical speaker...")
-            subprocess.run(["termux-volume", "music", "10"], check=False)
-            subprocess.run(["termux-media-player", "play", str(test_wav)], check=False)
+    if eff_backend == "cpu":
+        # CPU verification with termux-tts synth API
+        try:
+            from .engine import load
+            with load(language="en", device="cpu") as eng:
+                eng.synthesize("Hello, Termux CPU speech synthesis is ready.", output=str(test_wav))
+            proc_returncode = 0
+            proc_stderr = ""
+        except Exception as tts_err:
+            proc_returncode = 1
+            proc_stderr = str(tts_err)
     else:
-        print(f"  [FAIL-FAST] Self-test returned error: {proc.stderr}")
+        cmd = [
+            str(bin_path),
+            f"--vits-model-dir={model_path}",
+            "--use-vulkan-compute=1",
+            "--num-threads=1",
+            f"--output-filename={test_wav}",
+            "It's Python, hello! Vulkan GPU speech synthesis is installed and ready."
+        ]
+        env = get_clean_execution_env({"AMEVA_VK_DSP_ACCEL": "1"})
+        proc = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, env=env)
+        proc_returncode = proc.returncode
+        proc_stderr = proc.stderr
+
+    if proc_returncode == 0:
+        print(f"  [VERIFIED] On-device {eff_backend.upper()} synthesis self-test passed!")
+        player = shutil.which("termux-media-player") or shutil.which("play-audio")
+        if play and player:
+            print("  [PLAYBACK] Playing verification audio through physical speaker...")
+            if shutil.which("termux-volume"):
+                subprocess.run(["termux-volume", "music", "10"], check=False)
+            subprocess.run([player, str(test_wav)], check=False)
+    else:
+        print(f"  [FAIL-FAST] Self-test returned error: {proc_stderr}")
 
     print("=" * 70)
     print("   INSTALLATION COMPLETE! YOU CAN NOW USE 'termux-tts' DIRECTLY.")

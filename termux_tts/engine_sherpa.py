@@ -200,27 +200,61 @@ class SherpaNeuralEngine:
             )
 
         # 4. Standard VITS ONNX model search
+        from .script_classifier import normalize_language_code
+        norm_lang = normalize_language_code(self.language)
+
         for sdir in search_dirs:
             if not sdir.exists():
                 continue
 
+            chosen_dir = sdir
             onnx_files = list(sdir.glob("*.onnx"))
-            if not onnx_files and (sdir / "vits-mimic3-ko_KO-kss_low").exists():
-                sdir = sdir / "vits-mimic3-ko_KO-kss_low"
-                onnx_files = list(sdir.glob("*.onnx"))
+
+            # If sdir does not directly contain .onnx, search language-specific subdirectories
+            if not onnx_files:
+                target_subdirs = []
+                from .installer import OFFICIAL_NEURAL_MODELS
+                if norm_lang in OFFICIAL_NEURAL_MODELS:
+                    target_subdirs.append(OFFICIAL_NEURAL_MODELS[norm_lang]["name"])
+
+                if norm_lang == "ko":
+                    target_subdirs.extend(["vits-mimic3-ko_KO-kss_low", "vits-ko-kss", "vits-mimic3-ko"])
+                elif norm_lang == "en":
+                    target_subdirs.extend(["vits-piper-en_US-lessac-medium", "vits-piper-en_US-lessac-high", "vits-piper-en_US-amy-medium", "vits-en-lessac"])
+                elif norm_lang == "ja":
+                    target_subdirs.extend(["vits-piper-ja_JP-hina-medium", "vits-ja-hina"])
+                elif norm_lang == "zh":
+                    target_subdirs.extend(["vits-zh-aishell3", "vits-zh"])
+
+                for sub in target_subdirs:
+                    cand = sdir / sub
+                    if cand.is_dir() and list(cand.glob("*.onnx")):
+                        chosen_dir = cand
+                        onnx_files = list(cand.glob("*.onnx"))
+                        break
+
+                # Fallback: scan any subdirectory matching language tag
+                if not onnx_files:
+                    for sub in sdir.iterdir():
+                        if sub.is_dir() and norm_lang in sub.name.lower():
+                            cand_onnx = list(sub.glob("*.onnx"))
+                            if cand_onnx:
+                                chosen_dir = sub
+                                onnx_files = cand_onnx
+                                break
 
             if onnx_files:
                 onnx_model = str(onnx_files[0])
-                tokens_file = sdir / "tokens.txt"
-                espeak_dir = sdir / "espeak-ng-data"
-                lexicon_file = sdir / "lexicon.txt"
+                tokens_file = chosen_dir / "tokens.txt"
+                espeak_dir = chosen_dir / "espeak-ng-data"
+                lexicon_file = chosen_dir / "lexicon.txt"
 
                 if not tokens_file.exists():
-                    tokens_file = sdir.parent / "tokens.txt"
+                    tokens_file = chosen_dir.parent / "tokens.txt"
                 if not espeak_dir.exists():
-                    espeak_dir = sdir.parent / "espeak-ng-data"
+                    espeak_dir = chosen_dir.parent / "espeak-ng-data"
                 if not lexicon_file.exists():
-                    lexicon_file = sdir.parent / "lexicon.txt"
+                    lexicon_file = chosen_dir.parent / "lexicon.txt"
 
                 if tokens_file.exists() and (espeak_dir.exists() or lexicon_file.exists()):
                     res = {

@@ -94,16 +94,21 @@ class TTSEngine:
             return self._get_multilingual_engine()
 
         # Explicit Vulkan GPU MeloTTS Tier (Plan 1 NCNN Sliced / Plan 2 MNN Vulkan)
-        if t in ("melo", "melo_vulkan", "melo_ncnn", "melo_mnn") and (self.requested_device in ("vulkan", "gpu") or self.device == "vulkan"):
-            return VulkanNeuralEngine(
-                model_path=self.model_path,
-                language=self.language,
-                device=self.requested_device,
-                threads=self.threads,
-                sample_rate=self.sample_rate or 44100,
-                model_tier=self.model_tier,
-                model_type=t,
-            )
+        if t in ("melo_vulkan", "melo_ncnn", "melo_mnn") or (t == "melo" and self.requested_device in ("vulkan", "gpu")):
+            try:
+                return VulkanNeuralEngine(
+                    model_path=self.model_path,
+                    language=self.language,
+                    device=self.requested_device,
+                    threads=self.threads,
+                    sample_rate=self.sample_rate or 44100,
+                    model_tier=self.model_tier,
+                    model_type=t,
+                )
+            except (VulkanInitializationError, TTSModelLoadError) as err:
+                if self.requested_device in ("vulkan", "gpu"):
+                    raise
+                logger.debug("Vulkan melo engine not ready, using sherpa melo: %s", err)
 
         # Explicit Vulkan GPU Tier (Vulkan NCNN engine targets English Lessac)
         if (t in ("vulkan", "gpu", "ncnn") or (self.requested_device in ("vulkan", "gpu") and t in ("neural", "vits", "auto"))) and norm_lang in ("en", "auto"):

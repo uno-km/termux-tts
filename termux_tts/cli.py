@@ -59,6 +59,7 @@ def main():
 
     # 4. Install (One-Click Automated Provisioner)
     install_parser = subparsers.add_parser("install", help="1-Click download and provision precompiled Vulkan binary & VITS studio models")
+    install_parser.add_argument("-b", "--backend", default="auto", choices=["auto", "cpu", "vulkan"], help="Compute backend to provision (auto, cpu, vulkan)")
     install_parser.add_argument("--tier", default="high", choices=["high", "medium"], help="Model resolution tier (high=57MB Studio FP16, medium=25MB Fast)")
     install_parser.add_argument(
         "--models", default="default",
@@ -139,7 +140,13 @@ def main():
 
     elif args.command == "install":
         from .installer import run_installation
-        run_installation(tier=args.tier, models=getattr(args, "models", "all"), force=args.force, play=not args.no_play)
+        run_installation(
+            tier=args.tier,
+            models=getattr(args, "models", "default"),
+            backend=getattr(args, "backend", "auto"),
+            force=args.force,
+            play=not args.no_play
+        )
 
     elif args.command in ("component", "model", "instance") and _protocol_available:
         from ameva_component.cli_support import dispatch_protocol
