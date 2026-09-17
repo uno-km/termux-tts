@@ -34,7 +34,7 @@ from .exceptions import AmevaTermuxError, TermuxTTSError
 ONNXNeuralEngine = SherpaNeuralEngine
 ONNXResult = SherpaResult
 
-__version__ = "1.5.0"
+__version__ = "1.5.1"
 __all__ = [
     "TTSEngine",
     "load",

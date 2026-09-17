@@ -33,6 +33,7 @@ def get_candidate_binary_urls() -> List[str]:
 
     current_tag = f"v{__version__}"
     urls.append(f"https://github.com/uno-km/termux-tts/releases/download/{current_tag}/sherpa-onnx-android-arm64.tar.gz")
+    urls.append("https://github.com/uno-km/termux-tts/releases/download/v1.5.0/sherpa-onnx-android-arm64.tar.gz")
     urls.append("https://github.com/uno-km/termux-tts/releases/latest/download/sherpa-onnx-android-arm64.tar.gz")
     urls.append("https://github.com/uno-km/termux-stt/releases/download/v1.2.7/sherpa-onnx-android-arm64.tar.gz")
 
@@ -269,11 +270,26 @@ def provision_neural_model_archive(language: str, force: bool = False) -> Path:
     print(f"\n[termux-tts runtime] Auto-provisioning {cfg['description']}...")
     archive_path = cache_dir / f"{cfg['name']}.tar.bz2"
 
-    candidate_urls = [
-        f"https://github.com/uno-km/termux-tts/releases/download/v1.5.0/{cfg['name']}.tar.bz2",
-        f"https://github.com/uno-km/termux-tts/releases/latest/download/{cfg['name']}.tar.bz2",
-        cfg["url"],
-    ]
+    try:
+        from . import __version__
+    except Exception:
+        __version__ = "1.5.1"
+
+    current_tag = f"v{__version__}"
+    candidate_urls = []
+    custom_tag = os.environ.get("TERMUX_TTS_RELEASE_TAG", "").strip()
+    custom_base = os.environ.get("TERMUX_TTS_RELEASE_BASE", "").strip()
+
+    if custom_base:
+        candidate_urls.append(f"{custom_base.rstrip('/')}/{cfg['name']}.tar.bz2")
+    if custom_tag:
+        tag = custom_tag if custom_tag.startswith("v") else f"v{custom_tag}"
+        candidate_urls.append(f"https://github.com/uno-km/termux-tts/releases/download/{tag}/{cfg['name']}.tar.bz2")
+    if current_tag:
+        candidate_urls.append(f"https://github.com/uno-km/termux-tts/releases/download/{current_tag}/{cfg['name']}.tar.bz2")
+    candidate_urls.append(f"https://github.com/uno-km/termux-tts/releases/download/v1.5.0/{cfg['name']}.tar.bz2")
+    candidate_urls.append(f"https://github.com/uno-km/termux-tts/releases/latest/download/{cfg['name']}.tar.bz2")
+    candidate_urls.append(cfg["url"])
 
     download_success = False
     for url in candidate_urls:

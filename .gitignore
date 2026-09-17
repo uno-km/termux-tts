@@ -1,8 +1,10 @@
 __pycache__/
 *.py[cod]
 dist/
+releases/
 build/
 *.egg-info/
+*.tgz
 *.wav
 .env
 .env.*
