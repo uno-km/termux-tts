@@ -85,6 +85,19 @@ class TestCLIRouting(unittest.TestCase):
 
         mock_engine.speak.assert_called_with("Native speech broadcast", stream="MUSIC")
 
+    @patch("termux_tts.installer.run_installation")
+    def test_install_subcommand_routes_cleanly(self, mock_install):
+        test_args = ["termux-tts", "install", "--models", "default", "--no-play"]
+        with patch.object(sys, "argv", test_args):
+            from termux_tts.cli import main
+            main()
+
+        mock_install.assert_called_with(
+            models="default",
+            force=False,
+            play=False
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -57,13 +57,11 @@ def main():
     # 3. Doctor (Diagnostics)
     subparsers.add_parser("doctor", help="Run 12-stage Vulkan GPU hardware diagnostics")
 
-    # 4. Install (One-Click Automated Provisioner - Pure CPU Baseline Default)
+    # 4. Install (One-Click Automated Provisioner - Pure CPU Baseline)
     install_parser = subparsers.add_parser("install", help="1-Click download and provision native CPU Sherpa neural engine and models")
-    install_parser.add_argument("-b", "--backend", default="cpu", choices=["cpu", "vulkan"], help="Compute backend to provision (default: cpu)")
-    install_parser.add_argument("--tier", default=None, choices=["high", "medium"], help="Vulkan GPU model resolution tier (optional)")
     install_parser.add_argument(
         "--models", default="default",
-        help="Language model packages to provision: default (Korean & English only), or specific code: hi, ja, zh, ru, es, fr, de, or 'all'"
+        help="Language model packages to provision: default (Korean, English, Kokoro-82M), specific language (ko, en, ja, zh, etc.), or specific model (melo, kokoro, supertonic, all)"
     )
     install_parser.add_argument("--force", action="store_true", help="Force overwrite existing binary and model assets")
     install_parser.add_argument("--no-play", action="store_true", help="Skip playback verification during self-test")
@@ -141,9 +139,7 @@ def main():
     elif args.command == "install":
         from .installer import run_installation
         run_installation(
-            tier=getattr(args, "tier", None) or "high",
             models=getattr(args, "models", "default"),
-            backend=getattr(args, "backend", "cpu"),
             force=args.force,
             play=not args.no_play
         )

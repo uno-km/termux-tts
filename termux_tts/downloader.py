@@ -22,9 +22,9 @@ def resolve_model_path(model_name: str = "vits-piper-ko") -> Path:
     return Path(paths.get("models_dir", search_dirs[0])) / model_name
 
 def download_model(model_name: str = "vits-piper-ko", output_dir: Optional[Path] = None, force: bool = False) -> Path:
-    from .installer import install_vits_model
-    tier = "high" if "melo" in model_name else "fast"
-    return Path(install_vits_model(tier=tier, force=force, output_dir=output_dir))
+    from .installer import provision_neural_model_archive
+    target_id = "ko" if "ko" in model_name else ("melo" if "melo" in model_name else "en")
+    return Path(provision_neural_model_archive(target_id, force=force))
 
 def list_models() -> List[Dict[str, Any]]:
     return [{"id": k, **v} for k, v in AVAILABLE_MODELS.items()]
