@@ -273,7 +273,7 @@ def provision_neural_model_archive(language: str, force: bool = False) -> Path:
     try:
         from . import __version__
     except Exception:
-        __version__ = "1.5.2"
+        __version__ = "1.5.3"
 
     current_tag = f"v{__version__}"
     candidate_urls = []

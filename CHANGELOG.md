@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-## [1.5.2] - 2026-09-18
+## [1.5.3] - 2026-09-18
 
 ### Changed & Synchronized
 - **Mainline Production Release Synchronization**:
