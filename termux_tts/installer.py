@@ -154,13 +154,10 @@ def get_install_paths():
 
 
 def download_with_progress(url: str, dest_path: Path, label: str):
-    try:
-        from . import __version__
-    except Exception:
-        __version__ = "1.5.0"
+    ver = _resolve_package_version() or "latest"
 
     print(f"  [DOWNLOADING] {label}...")
-    req = urllib.request.Request(url, headers={"User-Agent": f"termux-tts-installer/{__version__} (Android; ARM64)"})
+    req = urllib.request.Request(url, headers={"User-Agent": f"termux-tts-installer/{ver} (Android; ARM64)"})
     with urllib.request.urlopen(req) as resp, open(dest_path, "wb") as out_f:
         total = int(resp.headers.get("Content-Length", 0))
         downloaded = 0

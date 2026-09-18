@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.5.4] - 2026-09-18
+
+### Changed & Hardened
+- **Zero-Hardcoding Dynamic Latest-First Provisioning Architecture**:
+  - Completely eradicated all static release versions and legacy fallback URLs from native binary and neural model download chains.
+  - Implemented prioritized 3-Tier resolution: Environment Override -> GitHub Releases Latest Canonical Endpoint (`releases/latest/download/`) -> Runtime Dynamic Package Version Matching.
+  - Replaced static user agent versions with dynamic package introspection.
+  - Ensured out-of-the-box asset provisioning and zero silent failures.
+
 ## [1.5.3] - 2026-09-18
 
 ### Changed & Synchronized
