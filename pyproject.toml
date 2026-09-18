@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "termux-tts"
-version = "1.5.1"
+version = "1.5.2"
 description = "On-device 4-Tier Text-to-Speech framework utilizing device resources (C++ Sherpa-ONNX Neural, Android Native & Expressive)"
 readme = "README.pypi.md"
 requires-python = ">=3.10"

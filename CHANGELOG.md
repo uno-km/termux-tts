@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.5.2] - 2026-09-18
+
+### Changed & Synchronized
+- **Mainline Production Release Synchronization**:
+  - Re-aligned release branch directly from `main` with pure CPU baseline and pre-provisioned neural model assets.
+  - Synchronized auto-provisioner download chains to `v1.5.2` release tag.
+  - Upgraded Python wheel, sdist, and NPM package specifications to `1.5.2`.
+
 ## [1.5.0] - 2026-09-15
 
 ### Added & Architecture Overhaul
