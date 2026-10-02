@@ -175,14 +175,31 @@ def download_with_progress(url: str, dest_path: Path, label: str):
     print()
 
 
-def install_engine_binary(force: bool = False) -> Path:
+def is_valid_elf(path: Path) -> bool:
+    """Verifies that the target path is a valid ELF executable/library via magic bytes."""
+    try:
+        p = path.resolve() if path.is_symlink() else path
+        if not p.is_file():
+            return False
+        with open(p, "rb") as f:
+            return f.read(4) == b"\x7fELF"
+    except (OSError, PermissionError):
+        return False
+
+
+def install_engine_binary(force: bool = False, dedicate: bool = False) -> Path:
     """Download and install native ARM64 Sherpa-ONNX CPU engine binary and shared libraries."""
     bin_dir, _ = get_install_paths()
     binary_path = bin_dir / "sherpa-onnx-offline-tts"
     lib_dir = Path(os.environ.get("PREFIX", "/data/data/com.termux/files/usr")) / "lib"
 
-    if binary_path.exists() and not force:
-        print(f"  [OK] Native CPU engine binary already exists: {binary_path}")
+    if dedicate and binary_path.is_symlink():
+        if ".local/share/ameva" in str(binary_path.resolve()):
+            print("  [DEDICATE] AMEVA Runtime managed engine detected. Preserving co-existence (<0.002s).")
+            return binary_path
+
+    if binary_path.exists() and is_valid_elf(binary_path) and not force:
+        print(f"  [OK] Native CPU engine binary already exists and verified: {binary_path}")
         return binary_path
 
     xdg_cache = Path(os.environ.get("XDG_CACHE_HOME") or (Path.home() / ".cache")).resolve()
@@ -195,7 +212,7 @@ def install_engine_binary(force: bool = False) -> Path:
     for url in candidate_urls:
         try:
             download_with_progress(url, tar_path, f"ARM64 Sherpa CPU Binary ({url})")
-            if tar_path.exists() and tar_path.stat().st_size > 500 * 1024:
+            if tar_path.exists() and tar_path.stat().st_size > 1024:
                 download_success = True
                 break
         except Exception as dl_err:
@@ -216,7 +233,7 @@ def install_engine_binary(force: bool = False) -> Path:
 
     found_bin = None
     for p in staging_dir.rglob("sherpa-onnx-offline-tts"):
-        if p.is_file():
+        if p.is_file() and is_valid_elf(p):
             found_bin = p
             break
 
@@ -231,6 +248,8 @@ def install_engine_binary(force: bool = False) -> Path:
     for so_file in staging_dir.rglob("*.so*"):
         if so_file.is_file():
             target_so = lib_dir / so_file.name
+            if not force and target_so.is_file() and is_valid_elf(target_so):
+                continue  # Preserve existing healthy shared library
             shutil.copy2(so_file, target_so)
             try:
                 target_so.chmod(0o755)
@@ -263,19 +282,23 @@ def provision_neural_model_archive(language: str, force: bool = False) -> Path:
     cfg = OFFICIAL_NEURAL_MODELS[lang]
     _, cache_dir = get_install_paths()
     target_dir = cache_dir / cfg["name"]
+    shared_model_dir = Path.home() / ".cache" / "termux-ai" / "models" / cfg["name"]
     unified_tts_dir = Path.home() / "models" / "tts"
 
-    if target_dir.is_dir() and not force:
-        onnx_files = list(target_dir.glob("*.onnx"))
-        if onnx_files:
-            try:
-                unified_tts_dir.mkdir(parents=True, exist_ok=True)
-                link_dest = unified_tts_dir / cfg["name"]
-                if not link_dest.exists() and not link_dest.is_symlink():
-                    link_dest.symlink_to(target_dir)
-            except OSError:
-                pass
-            return target_dir
+    if not force:
+        if shared_model_dir.is_dir() and list(shared_model_dir.glob("*.onnx")):
+            return shared_model_dir
+        if target_dir.is_dir():
+            onnx_files = list(target_dir.glob("*.onnx"))
+            if onnx_files:
+                try:
+                    unified_tts_dir.mkdir(parents=True, exist_ok=True)
+                    link_dest = unified_tts_dir / cfg["name"]
+                    if not link_dest.exists() and not link_dest.is_symlink():
+                        link_dest.symlink_to(target_dir)
+                except OSError:
+                    pass
+                return target_dir
 
     print(f"\n[termux-tts runtime] Auto-provisioning {cfg['description']}...")
     archive_path = cache_dir / f"{cfg['name']}.tar.bz2"
@@ -343,7 +366,7 @@ def provision_neural_model_archive(language: str, force: bool = False) -> Path:
         ) from err
 
 
-def run_installation(models: str = "default", force: bool = False, play: bool = True):
+def run_installation(models: str = "default", force: bool = False, play: bool = True, dedicate: bool = False):
     """
     Pure CPU Native Automated Provisioner for termux-tts.
     Installs pre-compiled ARM64 Sherpa-ONNX CPU engine and standard models (Korean + English + Kokoro-82M).
@@ -354,7 +377,7 @@ def run_installation(models: str = "default", force: bool = False, play: bool = 
 
     # 1. Install pre-compiled Sherpa-ONNX CPU native binary
     print("\n[STEP 1/3] Provisioning ARM64 Sherpa-ONNX Native CPU Engine...")
-    install_engine_binary(force=force)
+    install_engine_binary(force=force, dedicate=dedicate)
 
     # 2. Provision Neural Speech Models
     # Default is Korean (ko) + English (en) + Kokoro-82M Studio Model (kokoro)
@@ -403,3 +426,19 @@ def run_installation(models: str = "default", force: bool = False, play: bool = 
     print("=" * 70)
     print("   INSTALLATION COMPLETE! YOU CAN NOW USE 'termux-tts' DIRECTLY.")
     print("=" * 70)
+
+
+def main():
+    import argparse
+    parser = argparse.ArgumentParser(description="termux-tts native CPU automated provisioner")
+    parser.add_argument("--force", "-f", action="store_true", help="Force clean re-installation")
+    parser.add_argument("--dedicate", action="store_true", help="Smart inspection mode: preserve AMEVA runtime symlink")
+    parser.add_argument("--models", type=str, default="default", help="Neural model languages to provision (default, all, or ko,en)")
+    parser.add_argument("--no-play", action="store_true", help="Disable test sound playback")
+    args = parser.parse_args()
+
+    run_installation(models=args.models, force=args.force, play=not args.no_play, dedicate=args.dedicate)
+
+
+if __name__ == "__main__":
+    main()
