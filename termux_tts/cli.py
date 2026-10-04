@@ -46,6 +46,12 @@ def main():
     synth_parser.add_argument("--threads", type=int, default=4, help="Compute worker threads (ARM NEON)")
     synth_parser.add_argument("--volume", type=int, default=None, help="Set Android media volume (1 to 15)")
     synth_parser.add_argument("--play", action="store_true", help="Play synthesized audio through physical speaker immediately")
+    synth_parser.add_argument("--rpc", type=str, default=None, help="Distributed RPC server addresses (e.g. '192.168.0.220:50052,192.168.0.253:50052')")
+    synth_parser.add_argument("-ts", "--tensor-split", type=str, default=None, help="Fraction of the model to offload across devices (e.g. '50,50' or '60,40')")
+    synth_parser.add_argument("--cluster-rpc-servers", type=str, default=None, help="AMEVA cluster RPC server endpoints (comma-separated host:port)")
+    synth_parser.add_argument("--cluster-split-mode", type=str, default=None, help="AMEVA cluster split mode")
+    synth_parser.add_argument("--cluster-tensor-split", type=str, default=None, help="AMEVA cluster tensor split ratios")
+    synth_parser.add_argument("--cluster-vram-budget", type=str, default=None, help="AMEVA cluster VRAM budget")
 
     # 2. Speak (Option B: Native Samsung/Google System Voice)
     speak_parser = subparsers.add_parser("speak", help="Speak text directly through device speaker (Option B: Native)")
@@ -100,6 +106,12 @@ def main():
             threads=args.threads,
             engine=args.engine,
             tier=getattr(args, "tier", None),
+            rpc=getattr(args, "rpc", None),
+            tensor_split=getattr(args, "tensor_split", None),
+            cluster_rpc_servers=getattr(args, "cluster_rpc_servers", None),
+            cluster_split_mode=getattr(args, "cluster_split_mode", None),
+            cluster_tensor_split=getattr(args, "cluster_tensor_split", None),
+            cluster_vram_budget=getattr(args, "cluster_vram_budget", None),
         ) as engine:
             res = engine.synthesize(
                 target_text,

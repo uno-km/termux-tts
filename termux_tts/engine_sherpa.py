@@ -18,6 +18,7 @@ from typing import Optional, List, Dict, Any
 from .audio import AudioBuffer
 from .exceptions import TTSModelLoadError, TTSInferenceError
 from .hardware import get_clean_execution_env
+from .cluster import parse_cluster_rpc_spec, verify_rpc_cluster_nodes
 
 logger = logging.getLogger("termux_tts.engine_sherpa")
 
@@ -46,6 +47,8 @@ class SherpaNeuralEngine:
     """Production C++ Subprocess-Isolated Neural Speech Synthesis Engine."""
 
     CANDIDATE_BINARIES = [
+        str(Path.home() / ".local" / "share" / "ameva" / "rpc_llama" / "bin" / "sherpa-onnx-offline-tts"),
+        str(Path.home() / ".local" / "share" / "ameva" / "rpc_llama" / "bin" / "llama-cli"),
         "sherpa-onnx-offline-tts",
         str(Path.home() / ".local" / "bin" / "sherpa-onnx-offline-tts"),
         str(Path.home() / "sherpa-onnx-offline-tts"),
@@ -69,12 +72,24 @@ class SherpaNeuralEngine:
         threads: int = 4,
         sample_rate: int = 22050,
         model_type: str = "vits",
+        rpc: Optional[str] = None,
+        tensor_split: Optional[str] = None,
+        cluster_rpc_servers: Optional[Any] = None,
+        cluster_split_mode: Optional[str] = None,
+        cluster_tensor_split: Optional[str] = None,
+        cluster_vram_budget: Optional[dict] = None,
     ):
         self.language = language.lower()
         self.requested_device = device.lower()
         self.threads = threads
         self.sample_rate = sample_rate
         self.model_type = model_type.lower()
+        self.cluster_rpc_servers = parse_cluster_rpc_spec(cluster_rpc_servers or rpc)
+        self.rpc = ",".join(self.cluster_rpc_servers) if self.cluster_rpc_servers else None
+        self.cluster_split_mode = cluster_split_mode
+        self.cluster_tensor_split = cluster_tensor_split or tensor_split
+        self.tensor_split = self.cluster_tensor_split
+        self.cluster_vram_budget = cluster_vram_budget
         self._is_closed = False
 
         # 1. Locate C++ binary
@@ -355,11 +370,29 @@ class SherpaNeuralEngine:
                     cmd.append(f"--vits-lexicon={self.model_assets['lexicon']}")
                 cmd.append(normalized_text)
 
+            # Cluster Distributed Inference Routing & Pre-Flight Verification
+            if self.cluster_rpc_servers:
+                verify_rpc_cluster_nodes(self.cluster_rpc_servers)
+                cmd.extend(["--rpc", ",".join(self.cluster_rpc_servers)])
+            elif self.rpc:
+                parsed_servers = parse_cluster_rpc_spec(self.rpc)
+                if parsed_servers:
+                    verify_rpc_cluster_nodes(parsed_servers)
+                    cmd.extend(["--rpc", ",".join(parsed_servers)])
+
+            if self.tensor_split:
+                cmd.extend(["--tensor-split", str(self.tensor_split).strip()])
+
             env = get_clean_execution_env({
                 "PYTHONIOENCODING": "utf-8",
                 "LANG": "en_US.UTF-8",
                 "LC_ALL": "en_US.UTF-8",
             })
+            rpc_lib_dir = Path.home() / ".local" / "share" / "ameva" / "rpc_llama" / "bin"
+            if rpc_lib_dir.is_dir():
+                cur_ld = env.get("LD_LIBRARY_PATH", "")
+                if str(rpc_lib_dir) not in cur_ld:
+                    env["LD_LIBRARY_PATH"] = f"{rpc_lib_dir}:{cur_ld}" if cur_ld else str(rpc_lib_dir)
 
             res = subprocess.run(
                 cmd,

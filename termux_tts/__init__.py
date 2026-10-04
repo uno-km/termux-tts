@@ -6,6 +6,8 @@ termux-tts: Production-Grade 4-Tier TTS Framework for Android Termux.
 - Tier 4: Pure On-Device Expressive Emotional Synthesizer (Conversational Tags)
 """
 
+__version__ = "1.6.0"
+
 from .engine import TTSEngine, load, doctor, QUALITY_PRESETS
 from .engine_native import NativeAndroidEngine, NativeResult
 from .engine_sherpa import SherpaNeuralEngine, SherpaResult
@@ -24,17 +26,26 @@ from .exceptions import (
     TTSInferenceError,
     VulkanInitializationError,
     TTSAudioEncodingError,
-    TTSLanguageNotSupportedError
+    TTSLanguageNotSupportedError,
+    AmevaTermuxError,
+    TermuxTTSError,
+    ClusterConnectionError,
+    ClusterConfigurationError,
+)
+from . import cluster
+from .cluster import (
+    parse_cluster_rpc_spec,
+    verify_rpc_cluster_nodes,
+    verify_rpc_cluster_health,
 )
 from .hardware import HardwareProfile, detect_hardware, resolve_device
 from .downloader import list_models, download_model, resolve_model_path
-from .exceptions import AmevaTermuxError, TermuxTTSError
 
 # Backward-compatibility alias
 ONNXNeuralEngine = SherpaNeuralEngine
 ONNXResult = SherpaResult
 
-__version__ = "1.5.4"
+__version__ = "1.5.6"
 __all__ = [
     "TTSEngine",
     "load",
@@ -71,6 +82,12 @@ __all__ = [
     "resolve_model_path",
     "AmevaTermuxError",
     "TermuxTTSError",
+    "ClusterConnectionError",
+    "ClusterConfigurationError",
+    "cluster",
+    "parse_cluster_rpc_spec",
+    "verify_rpc_cluster_nodes",
+    "verify_rpc_cluster_health",
     "TTSError",
     "TTSModelLoadError",
     "TTSInferenceError",

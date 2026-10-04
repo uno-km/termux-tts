@@ -22,6 +22,7 @@ from .engine_sherpa import SherpaNeuralEngine, SherpaResult
 from .engine_vulkan import VulkanNeuralEngine, VulkanResult
 from .engine_expressive import ExpressiveEngine, ExpressiveResult
 from .engine_multilingual import MultilingualNeuralEngine, MultilingualResult
+from .cluster import parse_cluster_rpc_spec, verify_rpc_cluster_nodes
 from .script_classifier import MultilingualTokenizer
 from .hardware import (
     resolve_device_backend,
@@ -54,6 +55,12 @@ class TTSEngine:
         sample_rate: Optional[int] = None,
         engine_type: str = "auto",
         model_tier: Optional[str] = None,
+        rpc: Optional[str] = None,
+        tensor_split: Optional[str] = None,
+        cluster_rpc_servers: Optional[Any] = None,
+        cluster_split_mode: Optional[str] = None,
+        cluster_tensor_split: Optional[str] = None,
+        cluster_vram_budget: Optional[dict] = None,
     ):
         self.language = language.lower()
         self.preset = preset.lower()
@@ -63,6 +70,12 @@ class TTSEngine:
         self.threads = threads
         self.sample_rate = sample_rate
         self.model_tier = model_tier
+        self.cluster_rpc_servers = parse_cluster_rpc_spec(cluster_rpc_servers or rpc)
+        self.rpc = ",".join(self.cluster_rpc_servers) if self.cluster_rpc_servers else None
+        self.cluster_split_mode = cluster_split_mode
+        self.cluster_tensor_split = cluster_tensor_split or tensor_split
+        self.tensor_split = self.cluster_tensor_split
+        self.cluster_vram_budget = cluster_vram_budget
         self._is_closed = False
 
         # 1. Resolve effective device and engine_type via safe hardware gateway
@@ -136,6 +149,12 @@ class TTSEngine:
                 threads=self.threads,
                 sample_rate=self.sample_rate or 22050,
                 model_type="vits",
+                rpc=self.rpc,
+                tensor_split=self.tensor_split,
+                cluster_rpc_servers=self.cluster_rpc_servers,
+                cluster_split_mode=self.cluster_split_mode,
+                cluster_tensor_split=self.cluster_tensor_split,
+                cluster_vram_budget=self.cluster_vram_budget,
             )
 
         # BigTech 3rd-Party Neural Speech Engines (StyleTTS2/Kokoro, MeloTTS, Supertonic)
@@ -147,6 +166,12 @@ class TTSEngine:
                 threads=self.threads,
                 sample_rate=self.sample_rate or 22050,
                 model_type=t,
+                rpc=self.rpc,
+                tensor_split=self.tensor_split,
+                cluster_rpc_servers=self.cluster_rpc_servers,
+                cluster_split_mode=self.cluster_split_mode,
+                cluster_tensor_split=self.cluster_tensor_split,
+                cluster_vram_budget=self.cluster_vram_budget,
             )
 
         # Explicit Tier 4: Expressive (Fail-Fast)
@@ -177,6 +202,8 @@ class TTSEngine:
                     device=self.requested_device,
                     threads=self.threads,
                     sample_rate=self.sample_rate or 22050,
+                    rpc=self.rpc,
+                    tensor_split=self.tensor_split,
                 )
             except TTSModelLoadError as err:
                 logger.info("Auto tier: Neural model assets not ready (%s). Probing native system voice...", err)
@@ -308,6 +335,12 @@ def load(
     sample_rate: Optional[int] = None,
     engine: str = "auto",
     tier: Optional[str] = None,
+    rpc: Optional[str] = None,
+    tensor_split: Optional[str] = None,
+    cluster_rpc_servers: Optional[Any] = None,
+    cluster_split_mode: Optional[str] = None,
+    cluster_tensor_split: Optional[str] = None,
+    cluster_vram_budget: Optional[dict] = None,
 ) -> TTSEngine:
     return TTSEngine(
         model_path=model,
@@ -318,6 +351,12 @@ def load(
         sample_rate=sample_rate,
         engine_type=engine,
         model_tier=tier,
+        rpc=rpc,
+        tensor_split=tensor_split,
+        cluster_rpc_servers=cluster_rpc_servers,
+        cluster_split_mode=cluster_split_mode,
+        cluster_tensor_split=cluster_tensor_split,
+        cluster_vram_budget=cluster_vram_budget,
     )
 
 

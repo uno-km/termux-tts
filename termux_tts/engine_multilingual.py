@@ -321,7 +321,7 @@ class MultilingualNeuralEngine:
             if output:
                 chunk_buf.save(output)
 
-            dummy_chunk = LanguageChunk(text=clean_text, language="ko", pause_after=0.0)
+            unified_chunk = LanguageChunk(text=clean_text, language="ko", pause_after=0.0)
             return MultilingualResult(
                 text=clean_text,
                 audio_buffer=chunk_buf,
@@ -329,7 +329,7 @@ class MultilingualNeuralEngine:
                 duration_sec=dur_sec,
                 elapsed_ms=elapsed_ms,
                 rtf=rtf,
-                chunks=[dummy_chunk],
+                chunks=[unified_chunk],
                 languages_detected=["ko", "en"] if has_latin else ["ko"],
                 backend="UNIFIED_SINGLE_PASS_NEURAL",
             )
