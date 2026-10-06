@@ -115,3 +115,6 @@ class TTSAudioEncodingError(AmevaTermuxError):
 class TTSLanguageNotSupportedError(AmevaTermuxError):
     DEFAULT_CODE = "E203_LANGUAGE_NOT_SUPPORTED"
 
+class TTSConfigurationError(AmevaTermuxError):
+    DEFAULT_CODE = "E204_CONFIG_INVALID"
+

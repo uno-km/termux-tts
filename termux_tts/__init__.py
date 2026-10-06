@@ -14,6 +14,7 @@ from .engine_sherpa import SherpaNeuralEngine, SherpaResult
 from .engine_vulkan import VulkanNeuralEngine, VulkanResult
 from .engine_expressive import ExpressiveEngine, ExpressiveResult
 from .engine_multilingual import MultilingualNeuralEngine, MultilingualResult
+from .engine_sota import SOTANeuralEngine, SOTABackend, SOTAResult
 from .engine_sherpa_capi import SherpaResidentManager, SherpaCapiSession
 from .script_classifier import MultilingualTokenizer, ScriptRegistry, LanguageChunk
 from .installer import run_installation
@@ -60,6 +61,9 @@ __all__ = [
     "ExpressiveResult",
     "MultilingualNeuralEngine",
     "MultilingualResult",
+    "SOTANeuralEngine",
+    "SOTABackend",
+    "SOTAResult",
     "SherpaResidentManager",
     "SherpaCapiSession",
     "MultilingualTokenizer",

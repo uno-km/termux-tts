@@ -31,11 +31,11 @@ def main():
     synth_parser.add_argument("-l", "--lang", default="auto", help="Language code (auto=Multi-language auto switch, ko/kor=Korean only, en/eng=English only, ja/jpn=Japanese only)")
     synth_parser.add_argument(
         "-e", "--engine", default="auto",
-        choices=["auto", "vulkan", "ncnn", "gpu", "native", "neural", "onnx", "expressive", "multilingual", "hybrid", "kokoro", "melo", "supertonic"],
-        help="Synthesis engine tier (auto=Smart Routing, vulkan=GPU NCNN, native=Android voice, neural=VITS C++, kokoro=StyleTTS2 82M, melo=MeloTTS Bilingual, supertonic=Supertonic On-Device)"
+        choices=["auto", "vulkan", "ncnn", "gpu", "native", "neural", "onnx", "expressive", "multilingual", "hybrid", "kokoro", "melo", "supertonic", "cosyvoice", "cosyvoice2", "f5", "f5tts", "chattts", "sota"],
+        help="Synthesis engine tier (auto=Smart Routing, cosyvoice=Alibaba 0.5B DiT Flow, f5tts=Non-autoregressive DiT, chattts=Conversational Auto-regressive, vulkan=GPU NCNN, native=Android voice, neural=VITS C++)"
     )
     synth_parser.add_argument("-m", "--model", default=None, help="Path to model file or directory")
-    synth_parser.add_argument("-p", "--preset", default="balanced", choices=["fast", "balanced", "expressive", "ultra"])
+    synth_parser.add_argument("-p", "--preset", default="balanced", choices=["fast", "balanced", "expressive", "ultra", "cinematic", "sota"])
     synth_parser.add_argument("-d", "--device", default="auto", choices=["auto", "gpu", "vulkan", "opencl", "cpu"], help="Compute target device")
     synth_parser.add_argument("-b", "--backend", dest="device", choices=["auto", "gpu", "vulkan", "opencl", "cpu"], help="Alias for --device")
     synth_parser.add_argument("--gpu", dest="device", action="store_const", const="gpu", help="Enable hardware GPU acceleration")
@@ -52,6 +52,9 @@ def main():
     synth_parser.add_argument("--cluster-split-mode", type=str, default=None, help="AMEVA cluster split mode")
     synth_parser.add_argument("--cluster-tensor-split", type=str, default=None, help="AMEVA cluster tensor split ratios")
     synth_parser.add_argument("--cluster-vram-budget", type=str, default=None, help="AMEVA cluster VRAM budget")
+    synth_parser.add_argument("--ref-audio", type=str, default=None, help="Reference audio file (WAV/MP3) for zero-shot voice cloning")
+    synth_parser.add_argument("--ref-text", type=str, default=None, help="Reference audio transcription for high-fidelity cloning")
+    synth_parser.add_argument("--prompt", type=str, default=None, help="Stylistic or emotional prompt (e.g. 'dramatic documentary narrator')")
 
     # 2. Speak (Option B: Native Samsung/Google System Voice)
     speak_parser = subparsers.add_parser("speak", help="Speak text directly through device speaker (Option B: Native)")
@@ -113,12 +116,21 @@ def main():
             cluster_tensor_split=getattr(args, "cluster_tensor_split", None),
             cluster_vram_budget=getattr(args, "cluster_vram_budget", None),
         ) as engine:
+            synth_kwargs = {}
+            if getattr(args, "ref_audio", None) is not None:
+                synth_kwargs["ref_audio"] = args.ref_audio
+            if getattr(args, "ref_text", None) is not None:
+                synth_kwargs["ref_text"] = args.ref_text
+            if getattr(args, "prompt", None) is not None:
+                synth_kwargs["prompt"] = args.prompt
+
             res = engine.synthesize(
                 target_text,
                 output=out_path,
                 speed=args.speed,
                 language=args.lang,
-                mode=getattr(args, "mode", "unified")
+                mode=getattr(args, "mode", "unified"),
+                **synth_kwargs
             )
             backend_name = getattr(res, "backend", "UNKNOWN")
             model_name = getattr(res, "model_name", "model")

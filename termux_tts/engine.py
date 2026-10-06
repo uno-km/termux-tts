@@ -22,6 +22,7 @@ from .engine_sherpa import SherpaNeuralEngine, SherpaResult
 from .engine_vulkan import VulkanNeuralEngine, VulkanResult
 from .engine_expressive import ExpressiveEngine, ExpressiveResult
 from .engine_multilingual import MultilingualNeuralEngine, MultilingualResult
+from .engine_sota import SOTANeuralEngine, SOTABackend, SOTAResult
 from .cluster import parse_cluster_rpc_spec, verify_rpc_cluster_nodes
 from .script_classifier import MultilingualTokenizer
 from .hardware import (
@@ -39,6 +40,8 @@ QUALITY_PRESETS = {
     "balanced": {"sample_rate": 22050, "description": "22.05kHz Standard Audio"},
     "expressive": {"sample_rate": 24000, "description": "24kHz Expressive High Fidelity"},
     "ultra": {"sample_rate": 44100, "description": "44.1kHz Studio Master"},
+    "cinematic": {"sample_rate": 24000, "description": "24kHz SOTA Expressive Flow Matching (CosyVoice 2 / F5-TTS)"},
+    "sota": {"sample_rate": 24000, "description": "24kHz SOTA Voice Cloning & Conversational Flow"},
 }
 
 
@@ -157,6 +160,18 @@ class TTSEngine:
                 cluster_vram_budget=self.cluster_vram_budget,
             )
 
+        # Tier 5: SOTA Neural Voice Cloning & Expressive Flow (CosyVoice 2 / F5-TTS / ChatTTS)
+        elif t in ("cosyvoice", "cosyvoice2", "f5", "f5tts", "chattts", "sota"):
+            return SOTANeuralEngine(
+                backend=t,
+                model_path=self.model_path,
+                language=self.language,
+                device=self.requested_device,
+                threads=self.threads,
+                sample_rate=self.sample_rate,
+                rpc=self.rpc,
+            )
+
         # BigTech 3rd-Party Neural Speech Engines (StyleTTS2/Kokoro, MeloTTS, Supertonic)
         elif t in ("kokoro", "melo", "supertonic"):
             return SherpaNeuralEngine(
@@ -261,7 +276,10 @@ class TTSEngine:
         language: Optional[str] = None,
         mode: str = "unified",
         output_path: Optional[str] = None,
-    ) -> Union[SherpaResult, ExpressiveResult, NativeResult, MultilingualResult]:
+        ref_audio: Optional[Union[str, os.PathLike]] = None,
+        ref_text: Optional[str] = None,
+        prompt: Optional[str] = None,
+    ) -> Union[SherpaResult, ExpressiveResult, NativeResult, MultilingualResult, SOTAResult]:
         """Synthesize text into speech audio buffer / WAV file with Zero-Config intelligent routing."""
         if self._is_closed:
             raise TTSInferenceError("Cannot synthesize: Engine session is closed.")
@@ -304,9 +322,20 @@ class TTSEngine:
                 **kwargs
             )
 
-        # 4. Standard single-language engine
+        # 4. Standard single-language engine / SOTA engine
         if hasattr(self.synth_engine, "synthesize"):
-            return self.synth_engine.synthesize(clean_text, output=output, speed=speed, preset=preset)
+            import inspect
+            sig = inspect.signature(self.synth_engine.synthesize)
+            kwargs = {}
+            if "preset" in sig.parameters and preset is not None:
+                kwargs["preset"] = preset
+            if "ref_audio" in sig.parameters and ref_audio is not None:
+                kwargs["ref_audio"] = ref_audio
+            if "ref_text" in sig.parameters and ref_text is not None:
+                kwargs["ref_text"] = ref_text
+            if "prompt" in sig.parameters and prompt is not None:
+                kwargs["prompt"] = prompt
+            return self.synth_engine.synthesize(clean_text, output=output, speed=speed, **kwargs)
         elif hasattr(self.synth_engine, "speak"):
             return self.synth_engine.speak(clean_text)
         raise TTSInferenceError(f"Selected engine '{type(self.synth_engine).__name__}' does not support synthesize.")
