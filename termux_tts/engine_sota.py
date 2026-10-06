@@ -300,32 +300,16 @@ class SOTANeuralEngine:
         elif self._engine_instance == "chattts_loaded":
             return self._run_chattts_inference(text, speed, prompt)
 
-        # Baseline High-Fidelity Neural Fallback Pipeline (Zero-Mock Harmonic Modulator)
-        # Produces genuine audio waveform modulated with expressive human speech dynamics
-        duration = max(0.5, len(text) * 0.12 / max(0.1, speed))
-        num_samples = int(sr * duration)
-        t = np.linspace(0, duration, num_samples, dtype=np.float32)
-
-        # Dynamic fundamental frequency contour (130Hz base male documentary narrator prosody)
-        f0 = 135.0 + 15.0 * np.sin(2 * np.pi * 1.5 * t) + 8.0 * np.cos(2 * np.pi * 3.2 * t)
-        phase = 2 * np.pi * np.cumsum(f0) / sr
-
-        # Vocal fold harmonic summation
-        harmonics = (
-            0.60 * np.sin(phase)
-            + 0.25 * np.sin(2 * phase)
-            + 0.12 * np.sin(3 * phase)
-            + 0.06 * np.sin(4 * phase)
+        # [ZERO-SILENT-FALLBACK] If native neural weights are not loaded, FAIL-FAST immediately!
+        # Never generate fake sinusoidal beeps or white noise stubs.
+        backend_name = self.backend.value
+        raise TTSModelLoadError(
+            f"[TTS] [E001_MODEL_NOT_FOUND] [FAIL-FAST] SOTA backend '{backend_name}' neural weights not loaded on device.\n"
+            f"  - Requested Backend: {backend_name}\n"
+            f"  - Cause: Python package or model weights for '{backend_name}' are not loaded in local environment.\n"
+            f"  - Zero-Silent-Fallback Mandate: Refusing to output synthetic sine/noise mocks.\n"
+            f"  - Action Required: Download real model weights to ~/.cache/termux-tts/models/{backend_name}/ or install runtime."
         )
-
-        # Syllabic envelope modulation (imitates speech cadence at ~4.2 Hz)
-        syllable_env = np.maximum(0.0, np.sin(2 * np.pi * 4.2 * t)) ** 1.6
-        raw_speech = harmonics * syllable_env
-
-        # Soft organic breath aspiration component
-        breath_noise = np.random.normal(0, 0.02, num_samples).astype(np.float32)
-        combined = raw_speech + breath_noise
-        return combined.astype(np.float32)
 
     def _run_cosyvoice2_inference(
         self,
