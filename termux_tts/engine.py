@@ -302,11 +302,15 @@ class TTSEngine:
         detected_langs = MultilingualTokenizer.detect_languages(clean_text)
         is_mixed_text = len(detected_langs) > 1
 
+        is_sota_engine = self.requested_engine_type in ("cosyvoice", "cosyvoice2", "f5", "f5tts", "chattts", "sota")
+
         should_route_multilingual = (
-            (self.requested_engine_type in ("multilingual", "codeswitch", "hybrid")) or
-            (self.requested_engine_type == "auto" and (is_mixed_text or self._multilingual_engine is not None)) or
-            (is_mixed_text and self.requested_engine_type != "native") or
-            (target_lang in ("hi", "ru", "ja", "zh", "es", "fr", "de", "ar") and self.requested_engine_type != "native")
+            not is_sota_engine and (
+                (self.requested_engine_type in ("multilingual", "codeswitch", "hybrid")) or
+                (self.requested_engine_type == "auto" and (is_mixed_text or self._multilingual_engine is not None)) or
+                (is_mixed_text and self.requested_engine_type != "native") or
+                (target_lang in ("hi", "ru", "ja", "zh", "es", "fr", "de", "ar") and self.requested_engine_type != "native")
+            )
         )
 
         if should_route_multilingual:
