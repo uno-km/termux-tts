@@ -105,6 +105,18 @@ class TTSEngine:
         from .script_classifier import normalize_language_code
         norm_lang = normalize_language_code(self.language)
 
+        # Tier 5: SOTA Neural Voice Cloning & Expressive Flow (CosyVoice 2 / F5-TTS / ChatTTS)
+        if t in ("cosyvoice", "cosyvoice2", "f5", "f5tts", "chattts", "sota"):
+            return SOTANeuralEngine(
+                backend=t,
+                model_path=self.model_path,
+                language=self.language,
+                device=self.requested_device,
+                threads=self.threads,
+                sample_rate=self.sample_rate,
+                rpc=self.rpc,
+            )
+
         # Extended Languages (hi, ru, ja, zh, es, fr, de, ar) route to MultilingualNeuralEngine
         if norm_lang in ("hi", "ru", "ja", "zh", "es", "fr", "de", "ar"):
             return self._get_multilingual_engine()
@@ -160,20 +172,8 @@ class TTSEngine:
                 cluster_vram_budget=self.cluster_vram_budget,
             )
 
-        # Tier 5: SOTA Neural Voice Cloning & Expressive Flow (CosyVoice 2 / F5-TTS / ChatTTS)
-        elif t in ("cosyvoice", "cosyvoice2", "f5", "f5tts", "chattts", "sota"):
-            return SOTANeuralEngine(
-                backend=t,
-                model_path=self.model_path,
-                language=self.language,
-                device=self.requested_device,
-                threads=self.threads,
-                sample_rate=self.sample_rate,
-                rpc=self.rpc,
-            )
-
         # BigTech 3rd-Party Neural Speech Engines (StyleTTS2/Kokoro, MeloTTS, Supertonic)
-        elif t in ("kokoro", "melo", "supertonic"):
+        if t in ("kokoro", "melo", "supertonic"):
             return SherpaNeuralEngine(
                 model_path=self.model_path,
                 language=self.language,
